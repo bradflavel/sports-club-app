@@ -8,32 +8,27 @@ CREATE TABLE documents (
   id              uuid              PRIMARY KEY DEFAULT gen_random_uuid(),
   organisation_id uuid              NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   title           text              NOT NULL,
-  category        document_category NOT NULL DEFAULT 'other',
-  file_url        text              NOT NULL,
-  file_size_bytes integer,
-  mime_type       text,
-  is_public       boolean           DEFAULT false,
   description     text,
-  uploaded_by     uuid              REFERENCES profiles(id) ON DELETE SET NULL,
-  created_at      timestamptz       DEFAULT now(),
-  updated_at      timestamptz       DEFAULT now()
+  file_url        text              NOT NULL,
+  file_name       text              NOT NULL,
+  file_size_bytes integer,
+  file_type       text,
+  uploaded_by     uuid              NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  category        document_category NOT NULL DEFAULT 'other',
+  is_public       boolean           NOT NULL DEFAULT false,
+  created_at      timestamptz       DEFAULT now()
 );
-
-CREATE TRIGGER documents_updated_at
-  BEFORE UPDATE ON documents
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ── Photo Albums ──────────────────────────────────────────────────────────────
 
 CREATE TABLE photo_albums (
   id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   organisation_id uuid        NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
-  title           text        NOT NULL,
+  name            text        NOT NULL,
   description     text,
-  cover_url       text,
-  is_public       boolean     DEFAULT true,
+  cover_photo_url text,
+  created_by      uuid        NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   photo_count     integer     NOT NULL DEFAULT 0,
-  created_by      uuid        REFERENCES profiles(id) ON DELETE SET NULL,
   created_at      timestamptz DEFAULT now(),
   updated_at      timestamptz DEFAULT now()
 );
@@ -45,13 +40,15 @@ CREATE TRIGGER photo_albums_updated_at
 -- ── Photo Items ───────────────────────────────────────────────────────────────
 
 CREATE TABLE photo_items (
-  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  album_id    uuid        NOT NULL REFERENCES photo_albums(id) ON DELETE CASCADE,
-  image_url   text        NOT NULL,
-  caption     text,
-  taken_at    timestamptz,
-  uploaded_by uuid        REFERENCES profiles(id) ON DELETE SET NULL,
-  created_at  timestamptz DEFAULT now()
+  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  album_id      uuid        NOT NULL REFERENCES photo_albums(id) ON DELETE CASCADE,
+  file_url      text        NOT NULL,
+  thumbnail_url text,
+  caption       text,
+  uploaded_by   uuid        NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  width         integer,
+  height        integer,
+  created_at    timestamptz DEFAULT now()
 );
 
 -- ── Trigger: keep photo_count in sync ────────────────────────────────────────

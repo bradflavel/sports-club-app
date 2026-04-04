@@ -5,20 +5,16 @@ CREATE TABLE fixtures (
   id               uuid           PRIMARY KEY DEFAULT gen_random_uuid(),
   organisation_id  uuid           NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   season_id        uuid           REFERENCES seasons(id) ON DELETE SET NULL,
-  home_team_id     uuid           REFERENCES teams(id) ON DELETE SET NULL,
-  away_team_id     uuid           REFERENCES teams(id) ON DELETE SET NULL,
-  opponent_name    text,                          -- for external / visiting teams
-  round_number     integer,
-  round_label      text,                          -- e.g. "Round 1", "Grand Final"
-  scheduled_at     timestamptz,
+  team_id          uuid           NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  opponent_name    text           NOT NULL,
   venue            text,
-  address          text,
+  date_time        timestamptz    NOT NULL,
+  is_home          boolean        NOT NULL DEFAULT true,
   status           fixture_status NOT NULL DEFAULT 'scheduled',
   home_score       integer,
   away_score       integer,
-  result_notes     text,
-  is_home_game     boolean        DEFAULT true,
-  transport_notes  text,
+  round_number     integer,
+  notes            text,
   created_at       timestamptz    DEFAULT now(),
   updated_at       timestamptz    DEFAULT now()
 );
