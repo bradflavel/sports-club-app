@@ -7,8 +7,8 @@ import {
   getMembers,
   createMember,
   updateMemberStatus,
-  parseCsvData,
 } from '@/features/members/services/member-service';
+import { parseCsvData } from '@/features/members/services/csv-parser';
 
 // ---------------------------------------------------------------------------
 // Helpers to build a chainable Supabase query builder mock

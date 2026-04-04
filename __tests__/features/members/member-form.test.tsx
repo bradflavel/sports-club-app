@@ -8,6 +8,41 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
 
+// Radix Select uses pointer events not supported in jsdom. Replace it with a
+// simple native <select> that calls onValueChange on change so react-hook-form
+// receives the value properly.
+vi.mock('@/components/ui/select', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react');
+
+  // We track the latest onValueChange so SelectContent's native select can call it.
+  let currentOnValueChange: ((v: string) => void) | undefined;
+
+  const Select = ({ onValueChange, children }: { value?: string; onValueChange?: (v: string) => void; children: React.ReactNode }) => {
+    currentOnValueChange = onValueChange;
+    return React.createElement(React.Fragment, null, children);
+  };
+  const SelectTrigger = ({ children, id }: { children: React.ReactNode; id?: string }) =>
+    React.createElement('div', { id }, children);
+  const SelectValue = ({ placeholder }: { placeholder?: string }) =>
+    React.createElement('span', null, placeholder ?? '');
+  const SelectContent = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(
+      'select',
+      {
+        'data-testid': 'membership-type-select',
+        onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+          currentOnValueChange?.(e.target.value);
+        },
+      },
+      children
+    );
+  const SelectItem = ({ value, children }: { value: string; children: React.ReactNode }) =>
+    React.createElement('option', { value }, children);
+
+  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
+});
+
 describe('MemberForm', () => {
   const mockOnSubmit = vi.fn();
 
@@ -37,7 +72,8 @@ describe('MemberForm', () => {
 
     it('renders the Phone field', () => {
       render(<MemberForm onSubmit={mockOnSubmit} />);
-      expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
+      // Use exact label text to avoid matching "Contact Phone"
+      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
     });
 
     it('renders the Date of Birth field', () => {
@@ -47,7 +83,7 @@ describe('MemberForm', () => {
 
     it('renders the Membership Type selector', () => {
       render(<MemberForm onSubmit={mockOnSubmit} />);
-      expect(screen.getByText(/membership type/i)).toBeInTheDocument();
+      expect(screen.getByTestId('membership-type-select')).toBeInTheDocument();
     });
 
     it('renders the Registration Date field', () => {
@@ -126,12 +162,18 @@ describe('MemberForm', () => {
 
       await user.type(screen.getByLabelText(/first name/i), 'Jane');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
-      await user.type(screen.getByLabelText(/email/i), 'not-an-email');
+      // Use fireEvent.change on the email input to bypass native type=email browser
+      // validation and let React Hook Form handle validation itself.
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'not-an-email' } });
+      await user.type(screen.getByLabelText(/registration date/i), '2024-01-15');
+      fireEvent.change(screen.getByTestId('membership-type-select'), { target: { value: 'senior' } });
 
-      fireEvent.click(screen.getByRole('button', { name: /add member/i }));
+      // Submit the form directly to trigger RHF validation
+      fireEvent.submit(screen.getByRole('button', { name: /add member/i }).closest('form')!);
 
       await waitFor(() => {
-        expect(screen.getByText(/valid email/i)).toBeInTheDocument();
+        // The zod schema message is "Please enter a valid email"
+        expect(screen.getByText(/please enter a valid email/i)).toBeInTheDocument();
       });
     });
 
@@ -159,11 +201,9 @@ describe('MemberForm', () => {
       await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
       await user.type(screen.getByLabelText(/registration date/i), '2024-01-15');
 
-      // Select membership type via the hidden select trigger
-      const selectTrigger = screen.getByRole('combobox');
-      await user.click(selectTrigger);
-      const seniorOption = await screen.findByText('Senior');
-      await user.click(seniorOption);
+      // Select membership type via the mocked native <select>
+      const nativeSelect = screen.getByTestId('membership-type-select');
+      fireEvent.change(nativeSelect, { target: { value: 'senior' } });
 
       fireEvent.click(screen.getByRole('button', { name: /add member/i }));
 

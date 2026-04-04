@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicPage = request.nextUrl.pathname === '/';
   const isOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding');
 
-  if (!user && !isAuthPage && !isPublicPage) {
+  if (!user && !isAuthPage && !isPublicPage && !isOnboardingPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileUpload } from '@/components/shared/file-upload';
 import { cn } from '@/lib/utils';
-import { parseCsvData } from '@/features/members/services/member-service';
+import Link from 'next/link';
+import { parseCsvData } from '@/features/members/services/csv-parser';
 import type { CsvImportResult } from '@/features/members/types/member-types';
 
 const STEPS = ['Upload', 'Preview', 'Confirm', 'Import'] as const;
@@ -390,7 +391,7 @@ export function CsvImportWizard({ onImportComplete }: CsvImportWizardProps) {
                     Import Another File
                   </Button>
                   <Button asChild>
-                    <a href="/members">View Members</a>
+                    <Link href="/members">View Members</Link>
                   </Button>
                 </div>
               </div>

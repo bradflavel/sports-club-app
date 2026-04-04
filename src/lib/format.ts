@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow, isAfter, isBefore, differenceInDays } from 'date-fns';
+import { format, formatDistanceToNow, isBefore, differenceInDays } from 'date-fns';
 
 export function formatCurrency(amountCents: number): string {
   const dollars = amountCents / 100;

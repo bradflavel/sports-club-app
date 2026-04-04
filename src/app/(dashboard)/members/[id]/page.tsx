@@ -468,7 +468,7 @@ export default function MemberProfilePage() {
               <CardContent className="flex flex-col items-center justify-center py-10 text-center">
                 <p className="font-medium">No match history</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  No fixtures found for this member's teams.
+                  No fixtures found for this member&apos;s teams.
                 </p>
               </CardContent>
             </Card>
