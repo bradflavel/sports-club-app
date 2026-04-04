@@ -1,0 +1,47 @@
+export type {
+  Member,
+  MemberWithProfile,
+  MembershipType,
+  MembershipStatus,
+  Profile,
+} from '@/lib/supabase/database.types';
+
+export interface MemberFilters {
+  search?: string;
+  membershipType?: string[];
+  membershipStatus?: string[];
+  teamId?: string;
+}
+
+export interface MemberFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  membershipType: string;
+  registrationDate: string;
+  expiryDate?: string;
+  medicalConditions?: string;
+  dietaryRequirements?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  notes?: string;
+}
+
+export interface CsvImportRow {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  date_of_birth?: string;
+  membership_type: string;
+}
+
+export interface CsvImportResult {
+  success: CsvImportRow[];
+  errors: Array<{ row: number; data: Record<string, string>; errors: string[] }>;
+  totalRows: number;
+  successCount: number;
+  errorCount: number;
+}
