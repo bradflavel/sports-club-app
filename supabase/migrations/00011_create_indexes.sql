@@ -67,7 +67,7 @@ CREATE INDEX idx_payments_member_id
   ON payments (member_id);
 
 CREATE INDEX idx_payments_status
-  ON payments (organisation_id, status);
+  ON payments (organisation_id, payment_status);
 
 CREATE INDEX idx_payments_due_date
   ON payments (due_date);
