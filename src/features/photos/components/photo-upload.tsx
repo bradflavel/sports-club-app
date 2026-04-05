@@ -73,6 +73,7 @@ export function PhotoUpload({ onUpload }: PhotoUploadProps) {
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
           {previews.map((preview, index) => (
             <div key={index} className="group relative aspect-square overflow-hidden rounded-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview} alt="" className="h-full w-full object-cover" />
               <button
                 onClick={(e) => {

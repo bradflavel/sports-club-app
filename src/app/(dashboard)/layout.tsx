@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           userLastName={profile?.last_name}
           userAvatar={profile?.avatar_url}
         />
-        <main className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
         <MobileNav />
       </div>
     </div>

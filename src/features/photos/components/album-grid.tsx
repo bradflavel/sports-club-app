@@ -10,6 +10,7 @@ import { AlbumForm } from './album-form';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
+import Image from 'next/image';
 import { formatDate } from '@/lib/format';
 import type { PhotoAlbum } from '@/lib/supabase/database.types';
 import { CardSkeleton } from '@/components/shared/loading-skeleton';
@@ -93,12 +94,13 @@ export function AlbumGrid() {
           {albums.map((album) => (
             <Link key={album.id} href={`/photos/${album.id}`}>
               <div className="group overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md">
-                <div className="aspect-video bg-muted">
+                <div className="relative aspect-video bg-muted">
                   {album.cover_photo_url ? (
-                    <img
+                    <Image
                       src={album.cover_photo_url}
                       alt={album.name}
-                      className="h-full w-full object-cover"
+                      fill
+                      className="object-cover"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center">

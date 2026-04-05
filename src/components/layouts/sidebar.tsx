@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -81,7 +82,7 @@ export function Sidebar({
         {!collapsed && (
           <div className="flex items-center gap-2">
             {orgLogo ? (
-              <img src={orgLogo} alt={orgName} className="h-8 w-8 rounded" />
+              <Image src={orgLogo} alt={orgName} width={32} height={32} className="h-8 w-8 rounded object-cover" />
             ) : (
               <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
                 {orgName.charAt(0)}

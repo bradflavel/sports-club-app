@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { PhotoItem } from '@/lib/supabase/database.types';
@@ -38,10 +39,11 @@ export function PhotoGallery({ photos, onDeletePhoto, canDelete = false }: Photo
             className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg bg-muted"
             onClick={() => setSelectedIndex(index)}
           >
-            <img
+            <Image
               src={photo.thumbnail_url || photo.file_url}
               alt={photo.caption || 'Photo'}
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              fill
+              className="object-cover transition-transform group-hover:scale-105"
             />
             {photo.caption && (
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 p-2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -66,6 +68,7 @@ export function PhotoGallery({ photos, onDeletePhoto, canDelete = false }: Photo
 
             {selectedPhoto && (
               <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedPhoto.file_url}
                   alt={selectedPhoto.caption || 'Photo'}

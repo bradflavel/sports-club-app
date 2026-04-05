@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Loader2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,9 +116,11 @@ export function OrgSettingsForm({ organisation }: OrgSettingsFormProps) {
         <Label>Club Logo</Label>
         <div className="flex items-center gap-4">
           {formData.logo_url && (
-            <img
+            <Image
               src={formData.logo_url}
               alt="Club logo"
+              width={64}
+              height={64}
               className="h-16 w-16 rounded-lg object-cover border"
             />
           )}
