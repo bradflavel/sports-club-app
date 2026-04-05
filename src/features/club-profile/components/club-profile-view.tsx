@@ -19,12 +19,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { SPORT_CONFIGS } from '@/lib/constants';
 import { ClubCompletionBadge } from './club-completion-tracker';
-import type { Organisation, ClubVenue, MembershipFeeSchedule } from '@/lib/supabase/database.types';
+import { AU_STATE_OPTIONS } from '@/lib/constants';
+import type { Organisation, ClubVenue, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 interface ClubProfileViewProps {
   organisation: Organisation;
   venues: ClubVenue[];
-  feeSchedule: MembershipFeeSchedule[];
+  membershipTypes: MembershipTypeRecord[];
   isAdmin: boolean;
 }
 
@@ -37,7 +38,7 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-export function ClubProfileView({ organisation, venues, feeSchedule, isAdmin }: ClubProfileViewProps) {
+export function ClubProfileView({ organisation, venues, membershipTypes, isAdmin }: ClubProfileViewProps) {
   const sportLabel =
     SPORT_CONFIGS[organisation.sport_type]?.label ?? organisation.sport_type;
 
@@ -97,13 +98,13 @@ export function ClubProfileView({ organisation, venues, feeSchedule, isAdmin }: 
             <ClubCompletionBadge
               organisation={organisation}
               venues={venues}
-              feeSchedule={feeSchedule}
+              membershipTypes={membershipTypes}
             />
           )}
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {/* Contact Card */}
         <Card>
           <CardHeader>
@@ -289,17 +290,17 @@ export function ClubProfileView({ organisation, venues, feeSchedule, isAdmin }: 
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {feeSchedule.length > 0 ? (
+            {membershipTypes.length > 0 ? (
               <div className="space-y-2">
-                {feeSchedule.map((fee) => (
-                  <div key={fee.id} className="flex items-center justify-between text-sm">
-                    <span className="capitalize">{fee.label || fee.membership_type.replace(/_/g, ' ')}</span>
-                    <span className="font-medium">${(fee.amount_cents / 100).toFixed(2)}</span>
+                {membershipTypes.filter((t) => t.is_active).map((t) => (
+                  <div key={t.id} className="flex items-center justify-between text-sm">
+                    <span>{t.name}</span>
+                    <span className="font-medium">${((t.fee_cents ?? 0) / 100).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground/50 italic">No fees configured</p>
+              <p className="text-sm text-muted-foreground/50 italic">No membership types configured</p>
             )}
           </CardContent>
         </Card>
@@ -311,7 +312,7 @@ export function ClubProfileView({ organisation, venues, feeSchedule, isAdmin }: 
           <Separator />
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Admin Only</p>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             {/* Business Details */}
             <Card>
               <CardHeader>
@@ -321,6 +322,7 @@ export function ClubProfileView({ organisation, venues, feeSchedule, isAdmin }: 
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
+                <DetailRow label="State" value={organisation.state ? (AU_STATE_OPTIONS.find((o) => o.value === organisation.state)?.label ?? organisation.state) : null} />
                 <DetailRow label="ABN" value={organisation.abn} />
                 <DetailRow label="Entity Name" value={organisation.abn_entity_name} />
                 <DetailRow label="GST Registered" value={organisation.is_gst_registered ? 'Yes' : 'No'} />

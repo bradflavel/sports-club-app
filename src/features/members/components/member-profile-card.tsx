@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate, calculateAge } from '@/lib/format';
+import { formatDate, calculateAge, isMinor } from '@/lib/format';
 import { getInitials } from '@/lib/utils';
 import type { MemberWithProfile, MemberGuardian } from '@/features/members/types/member-types';
 
@@ -22,14 +22,6 @@ interface MemberProfileCardProps {
   guardians?: GuardianInfo[];
 }
 
-const membershipTypeLabel: Record<string, string> = {
-  senior: 'Senior',
-  junior: 'Junior',
-  social: 'Social',
-  life: 'Life',
-  volunteer: 'Volunteer',
-};
-
 const relationshipLabel: Record<string, string> = {
   parent: 'Parent',
   grandparent: 'Grandparent',
@@ -41,7 +33,7 @@ export function MemberProfileCard({ member, showEdit = false, guardians }: Membe
   const { profile } = member;
   const fullName = `${profile.first_name} ${profile.last_name}`;
   const age = profile.date_of_birth ? calculateAge(profile.date_of_birth) : null;
-  const isJunior = member.membership_type === 'junior';
+  const isMemberMinor = profile.date_of_birth ? isMinor(profile.date_of_birth) : false;
 
   return (
     <Card>
@@ -70,9 +62,9 @@ export function MemberProfileCard({ member, showEdit = false, guardians }: Membe
                     {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
                   </Badge>
                   <Badge variant="outline">
-                    {membershipTypeLabel[member.membership_type] ?? member.membership_type}
+                    {member.membership_type.charAt(0).toUpperCase() + member.membership_type.slice(1)}
                   </Badge>
-                  {isJunior && (
+                  {isMemberMinor && (
                     <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
                       Minor
                     </Badge>

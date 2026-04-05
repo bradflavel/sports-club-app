@@ -81,8 +81,9 @@ describe('MemberForm', () => {
       expect(screen.getByLabelText(/date of birth/i)).toBeInTheDocument();
     });
 
-    it('renders the Membership Type selector', () => {
-      render(<MemberForm onSubmit={mockOnSubmit} />);
+    it('renders the Membership Type selector when types provided', () => {
+      const types = [{ id: '1', organisation_id: 'org1', name: 'Senior', description: null, fee_cents: 0, has_expiry: true, default_duration_months: 12, auto_renewal: false, grace_period_days: 0, is_active: true, display_order: 0, created_at: '', updated_at: '' }];
+      render(<MemberForm onSubmit={mockOnSubmit} membershipTypes={types} />);
       expect(screen.getByTestId('membership-type-select')).toBeInTheDocument();
     });
 
@@ -166,8 +167,6 @@ describe('MemberForm', () => {
       // validation and let React Hook Form handle validation itself.
       fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'not-an-email' } });
       await user.type(screen.getByLabelText(/registration date/i), '2024-01-15');
-      fireEvent.change(screen.getByTestId('membership-type-select'), { target: { value: 'senior' } });
-
       // Submit the form directly to trigger RHF validation
       fireEvent.submit(screen.getByRole('button', { name: /add member/i }).closest('form')!);
 
@@ -194,7 +193,8 @@ describe('MemberForm', () => {
   describe('successful submission', () => {
     it('calls onSubmit with valid form data', async () => {
       const user = userEvent.setup();
-      render(<MemberForm onSubmit={mockOnSubmit} />);
+      const types = [{ id: 'type-1', organisation_id: 'org1', name: 'Senior', description: null, fee_cents: 0, has_expiry: true, default_duration_months: 12, auto_renewal: false, grace_period_days: 0, is_active: true, display_order: 0, created_at: '', updated_at: '' }];
+      render(<MemberForm onSubmit={mockOnSubmit} membershipTypes={types} />);
 
       await user.type(screen.getByLabelText(/first name/i), 'Jane');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
@@ -203,7 +203,7 @@ describe('MemberForm', () => {
 
       // Select membership type via the mocked native <select>
       const nativeSelect = screen.getByTestId('membership-type-select');
-      fireEvent.change(nativeSelect, { target: { value: 'senior' } });
+      fireEvent.change(nativeSelect, { target: { value: 'type-1' } });
 
       fireEvent.click(screen.getByRole('button', { name: /add member/i }));
 
@@ -215,7 +215,7 @@ describe('MemberForm', () => {
       expect(submittedData.firstName).toBe('Jane');
       expect(submittedData.lastName).toBe('Doe');
       expect(submittedData.email).toBe('jane@example.com');
-      expect(submittedData.membershipType).toBe('senior');
+      expect(submittedData.membershipTypeId).toBe('type-1');
     });
 
     it('shows loading spinner when loading prop is true', () => {

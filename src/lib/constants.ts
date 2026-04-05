@@ -208,6 +208,26 @@ export const DOCUMENT_CATEGORY_OPTIONS = [
   { value: 'other', label: 'Other' },
 ] as const;
 
+export const AU_STATE_OPTIONS = [
+  { value: 'ACT', label: 'Australian Capital Territory' },
+  { value: 'NSW', label: 'New South Wales' },
+  { value: 'NT', label: 'Northern Territory' },
+  { value: 'QLD', label: 'Queensland' },
+  { value: 'SA', label: 'South Australia' },
+  { value: 'TAS', label: 'Tasmania' },
+  { value: 'VIC', label: 'Victoria' },
+  { value: 'WA', label: 'Western Australia' },
+] as const;
+
+// Default membership types created for new organisations
+export const DEFAULT_MEMBERSHIP_TYPES = [
+  { name: 'Senior', fee_cents: 0, has_expiry: true, default_duration_months: 12 },
+  { name: 'Junior', fee_cents: 0, has_expiry: true, default_duration_months: 12 },
+  { name: 'Social', fee_cents: 0, has_expiry: true, default_duration_months: 12 },
+  { name: 'Life', fee_cents: 0, has_expiry: false, default_duration_months: null },
+  { name: 'Volunteer', fee_cents: 0, has_expiry: true, default_duration_months: 12 },
+] as const;
+
 // Activity module system
 export const ACTIVITY_TYPE_CONFIG = {
   competition: {

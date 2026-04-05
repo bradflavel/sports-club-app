@@ -12,7 +12,7 @@ import { useOrganisation } from '@/hooks/use-organisation';
 import { useUser } from '@/hooks/use-user';
 import { createClient } from '@/lib/supabase/client';
 import { getCompletionItems, getCompletionPercentage } from '@/features/club-profile/components/club-completion-tracker';
-import type { ClubVenue, MembershipFeeSchedule } from '@/lib/supabase/database.types';
+import type { ClubVenue, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 export default function ClubCompletionPage() {
   const { organisation, loading: orgLoading } = useOrganisation();
@@ -20,7 +20,7 @@ export default function ClubCompletionPage() {
   const router = useRouter();
 
   const [venues, setVenues] = useState<ClubVenue[]>([]);
-  const [feeSchedule, setFeeSchedule] = useState<MembershipFeeSchedule[]>([]);
+  const [membershipTypes, setMembershipTypes] = useState<MembershipTypeRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
@@ -28,12 +28,12 @@ export default function ClubCompletionPage() {
   const fetchData = useCallback(async () => {
     if (!organisation) return;
     const supabase = createClient();
-    const [v, f] = await Promise.all([
+    const [v, t] = await Promise.all([
       supabase.from('club_venues').select('*').eq('organisation_id', organisation.id),
-      supabase.from('membership_fee_schedule').select('*').eq('organisation_id', organisation.id),
+      supabase.from('membership_types').select('*').eq('organisation_id', organisation.id).order('display_order'),
     ]);
     setVenues((v.data ?? []) as ClubVenue[]);
-    setFeeSchedule((f.data ?? []) as MembershipFeeSchedule[]);
+    setMembershipTypes((t.data ?? []) as MembershipTypeRecord[]);
     setLoading(false);
   }, [organisation]);
 
@@ -47,8 +47,8 @@ export default function ClubCompletionPage() {
     return null;
   }
 
-  const items = getCompletionItems(organisation, venues, feeSchedule);
-  const percentage = getCompletionPercentage(organisation, venues, feeSchedule);
+  const items = getCompletionItems(organisation, venues, membershipTypes);
+  const percentage = getCompletionPercentage(organisation, venues, membershipTypes);
   const completedCount = items.filter((i) => i.completed).length;
   const incompleteCount = items.length - completedCount;
   const categories = [...new Set(items.map((i) => i.category))];

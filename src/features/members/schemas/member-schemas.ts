@@ -15,9 +15,8 @@ export const memberSchema = z
     email: z.email('Please enter a valid email'),
     phone: z.string().optional(),
     dateOfBirth: z.string().optional(),
-    membershipType: z.enum(['senior', 'junior', 'social', 'life', 'volunteer'], {
-      error: 'Please select a membership type',
-    }),
+    membershipTypeId: z.string().optional(),
+    isMinor: z.boolean().optional(),
     registrationDate: z.string().min(1, 'Registration date is required'),
     expiryDate: z.string().optional(),
     medicalConditions: z.string().optional(),
@@ -28,11 +27,11 @@ export const memberSchema = z
     guardians: z.array(guardianEntrySchema).optional(),
   })
   .check((ctx) => {
-    if (ctx.value.membershipType === 'junior') {
+    if (ctx.value.isMinor) {
       if (!ctx.value.dateOfBirth) {
         ctx.issues.push({
           code: 'custom',
-          message: 'Date of birth is required for junior members',
+          message: 'Date of birth is required for minor members',
           path: ['dateOfBirth'],
           input: ctx.value.dateOfBirth,
         });
@@ -40,7 +39,7 @@ export const memberSchema = z
       if (!ctx.value.emergencyContactName) {
         ctx.issues.push({
           code: 'custom',
-          message: 'Emergency contact name is required for junior members',
+          message: 'Emergency contact name is required for minor members',
           path: ['emergencyContactName'],
           input: ctx.value.emergencyContactName,
         });
@@ -48,7 +47,7 @@ export const memberSchema = z
       if (!ctx.value.emergencyContactPhone) {
         ctx.issues.push({
           code: 'custom',
-          message: 'Emergency contact phone is required for junior members',
+          message: 'Emergency contact phone is required for minor members',
           path: ['emergencyContactPhone'],
           input: ctx.value.emergencyContactPhone,
         });
@@ -56,7 +55,7 @@ export const memberSchema = z
       if (!ctx.value.guardians || ctx.value.guardians.length === 0) {
         ctx.issues.push({
           code: 'custom',
-          message: 'At least one guardian is required for junior members',
+          message: 'At least one guardian is required for minor members',
           path: ['guardians'],
           input: ctx.value.guardians,
         });
@@ -65,7 +64,7 @@ export const memberSchema = z
       if (ctx.value.guardians && ctx.value.guardians.length > 0 && !hasConsent) {
         ctx.issues.push({
           code: 'custom',
-          message: 'Parental consent is required for junior members',
+          message: 'Parental consent is required for minor members',
           path: ['guardians'],
           input: ctx.value.guardians,
         });

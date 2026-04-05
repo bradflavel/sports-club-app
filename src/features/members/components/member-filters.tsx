@@ -17,9 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import type { MemberFilters } from '@/features/members/types/member-types';
-import type { Team } from '@/lib/supabase/database.types';
+import type { Team, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
-const MEMBERSHIP_TYPES = [
+const FALLBACK_MEMBERSHIP_TYPES = [
   { value: 'senior', label: 'Senior' },
   { value: 'junior', label: 'Junior' },
   { value: 'social', label: 'Social' },
@@ -37,9 +37,10 @@ const MEMBERSHIP_STATUSES = [
 interface MemberFiltersProps {
   filters: MemberFilters;
   onFiltersChange: (filters: MemberFilters) => void;
+  membershipTypes?: MembershipTypeRecord[];
 }
 
-export function MemberFilters({ filters, onFiltersChange }: MemberFiltersProps) {
+export function MemberFilters({ filters, onFiltersChange, membershipTypes }: MemberFiltersProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [typeOpen, setTypeOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -95,7 +96,10 @@ export function MemberFilters({ filters, onFiltersChange }: MemberFiltersProps) 
         </PopoverTrigger>
         <PopoverContent className="w-48 p-2" align="start">
           <div className="space-y-1">
-            {MEMBERSHIP_TYPES.map((type) => {
+            {(membershipTypes
+              ? membershipTypes.map((mt) => ({ value: mt.id, label: mt.name }))
+              : FALLBACK_MEMBERSHIP_TYPES
+            ).map((type) => {
               const isChecked = filters.membershipType?.includes(type.value) ?? false;
               return (
                 <div

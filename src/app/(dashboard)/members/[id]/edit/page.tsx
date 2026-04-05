@@ -70,12 +70,7 @@ export default function EditMemberPage() {
       const { error: memberError } = await supabase
         .from('members')
         .update({
-          membership_type: data.membershipType as
-            | 'senior'
-            | 'junior'
-            | 'social'
-            | 'life'
-            | 'volunteer',
+          membership_type_id: data.membershipTypeId || null,
           registration_date: data.registrationDate,
           expiry_date: data.expiryDate || null,
           medical_conditions: data.medicalConditions || null,
@@ -123,7 +118,7 @@ export default function EditMemberPage() {
     email: profile.email,
     phone: profile.phone ?? '',
     dateOfBirth: profile.date_of_birth ?? '',
-    membershipType: member.membership_type as MemberInput['membershipType'],
+    membershipTypeId: member.membership_type_id ?? undefined,
     registrationDate: member.registration_date,
     expiryDate: member.expiry_date ?? '',
     medicalConditions: member.medical_conditions ?? '',

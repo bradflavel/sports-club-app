@@ -253,7 +253,7 @@ export function Sidebar({
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-sidebar-accent',
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 hover:bg-sidebar-accent active:scale-[0.98]',
                 collapsed && 'justify-center px-2'
               )}
             >
@@ -264,19 +264,28 @@ export function Sidebar({
                 </AvatarFallback>
               </Avatar>
               {!collapsed && (
-                <div className="min-w-0 text-left">
+                <div className="min-w-0 text-left flex-1">
                   <p className="truncate text-sm font-medium leading-tight">{userName}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">Manage account</p>
                 </div>
+              )}
+              {!collapsed && (
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
               )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium">{userName}</p>
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/settings">Profile Settings</Link>
+              <Link href="/settings" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Profile Settings
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
+            <DropdownMenuItem onClick={handleSignOut} className="gap-2">
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
             </DropdownMenuItem>

@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
 import { generateSlug } from '@/lib/utils';
 import { SPORT_TYPE_OPTIONS } from '@/lib/constants';
+import { createDefaultTypes } from '@/features/members/services/membership-type-service';
 import type { SportType } from '@/lib/supabase/database.types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -200,6 +201,9 @@ function StepCreateClub({
         toast({ title: 'Error', description: orgError.message, variant: 'destructive' });
         return;
       }
+
+      // Create default membership types for the new org
+      await createDefaultTypes(org.id);
 
       // Set profile as admin
       const { error: profileError } = await supabase
