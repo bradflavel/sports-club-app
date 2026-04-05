@@ -246,7 +246,7 @@ CREATE POLICY "fixtures_update_coach"
     AND EXISTS (
       SELECT 1 FROM teams t
       WHERE t.coach_id = auth.uid()
-        AND (t.id = fixtures.home_team_id OR t.id = fixtures.away_team_id)
+        AND t.id = fixtures.team_id
     )
   );
 
@@ -320,20 +320,10 @@ CREATE POLICY "documents_delete_admin"
 
 -- ── photo_albums ──────────────────────────────────────────────────────────────
 
--- Public albums visible to all org members; private albums to admins/managers only.
-CREATE POLICY "photo_albums_select_public"
+-- All org members may read albums.
+CREATE POLICY "photo_albums_select_same_org"
   ON photo_albums FOR SELECT
-  USING (
-    organisation_id = auth_org_id()
-    AND is_public = true
-  );
-
-CREATE POLICY "photo_albums_select_private_admin"
-  ON photo_albums FOR SELECT
-  USING (
-    is_public = false
-    AND is_admin_or_manager(organisation_id)
-  );
+  USING (organisation_id = auth_org_id());
 
 CREATE POLICY "photo_albums_insert_admin"
   ON photo_albums FOR INSERT
@@ -349,7 +339,7 @@ CREATE POLICY "photo_albums_delete_admin"
 
 -- ── photo_items ───────────────────────────────────────────────────────────────
 
--- Inherit visibility from parent album.
+-- Visible if the parent album is in the user's org.
 CREATE POLICY "photo_items_select_via_album"
   ON photo_items FOR SELECT
   USING (
@@ -357,10 +347,6 @@ CREATE POLICY "photo_items_select_via_album"
       SELECT 1 FROM photo_albums pa
       WHERE pa.id = photo_items.album_id
         AND pa.organisation_id = auth_org_id()
-        AND (
-          pa.is_public = true
-          OR is_admin_or_manager(pa.organisation_id)
-        )
     )
   );
 
@@ -386,21 +372,10 @@ CREATE POLICY "photo_items_delete_admin"
 
 -- ── announcements ─────────────────────────────────────────────────────────────
 
--- All org members may read published announcements.
+-- All org members may read announcements.
 CREATE POLICY "announcements_select_same_org"
   ON announcements FOR SELECT
-  USING (
-    organisation_id = auth_org_id()
-    AND is_published = true
-  );
-
--- Admins/managers may read unpublished drafts too.
-CREATE POLICY "announcements_select_drafts_admin"
-  ON announcements FOR SELECT
-  USING (
-    is_published = false
-    AND is_admin_or_manager(organisation_id)
-  );
+  USING (organisation_id = auth_org_id());
 
 CREATE POLICY "announcements_insert_admin"
   ON announcements FOR INSERT
