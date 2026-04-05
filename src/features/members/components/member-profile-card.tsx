@@ -1,19 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { Mail, Phone, Calendar, Pencil } from 'lucide-react';
+import { Mail, Phone, Calendar, Pencil, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate } from '@/lib/format';
+import { formatDate, calculateAge } from '@/lib/format';
 import { getInitials } from '@/lib/utils';
-import type { MemberWithProfile } from '@/features/members/types/member-types';
+import type { MemberWithProfile, MemberGuardian } from '@/features/members/types/member-types';
+
+interface GuardianInfo {
+  name: string;
+  relationship: string;
+}
 
 interface MemberProfileCardProps {
   member: MemberWithProfile;
   showEdit?: boolean;
+  guardians?: GuardianInfo[];
 }
 
 const membershipTypeLabel: Record<string, string> = {
@@ -24,9 +30,18 @@ const membershipTypeLabel: Record<string, string> = {
   volunteer: 'Volunteer',
 };
 
-export function MemberProfileCard({ member, showEdit = false }: MemberProfileCardProps) {
+const relationshipLabel: Record<string, string> = {
+  parent: 'Parent',
+  grandparent: 'Grandparent',
+  legal_guardian: 'Legal Guardian',
+  other: 'Guardian',
+};
+
+export function MemberProfileCard({ member, showEdit = false, guardians }: MemberProfileCardProps) {
   const { profile } = member;
   const fullName = `${profile.first_name} ${profile.last_name}`;
+  const age = profile.date_of_birth ? calculateAge(profile.date_of_birth) : null;
+  const isJunior = member.membership_type === 'junior';
 
   return (
     <Card>
@@ -42,7 +57,14 @@ export function MemberProfileCard({ member, showEdit = false }: MemberProfileCar
 
             <div className="space-y-2">
               <div>
-                <h2 className="text-xl font-semibold">{fullName}</h2>
+                <h2 className="text-xl font-semibold">
+                  {fullName}
+                  {age !== null && (
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      ({age} yr{age !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">
                     {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
@@ -50,6 +72,11 @@ export function MemberProfileCard({ member, showEdit = false }: MemberProfileCar
                   <Badge variant="outline">
                     {membershipTypeLabel[member.membership_type] ?? member.membership_type}
                   </Badge>
+                  {isJunior && (
+                    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
+                      Minor
+                    </Badge>
+                  )}
                   <StatusBadge status={member.membership_status} />
                 </div>
               </div>
@@ -70,6 +97,22 @@ export function MemberProfileCard({ member, showEdit = false }: MemberProfileCar
                   Member since {formatDate(member.registration_date)}
                 </span>
               </div>
+
+              {/* Guardian info for minors */}
+              {guardians && guardians.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Users className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Guardian{guardians.length > 1 ? 's' : ''}:{' '}
+                    {guardians
+                      .map(
+                        (g) =>
+                          `${g.name} (${relationshipLabel[g.relationship] ?? g.relationship})`
+                      )
+                      .join(', ')}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

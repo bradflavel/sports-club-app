@@ -2,10 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
+  Building2,
   Shield,
   Calendar,
   DollarSign,
@@ -16,7 +17,15 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Trophy,
+  Award,
+  Dumbbell,
+  Tent,
+  type LucideIcon,
 } from 'lucide-react';
+import { useEnabledModules } from '@/hooks/use-enabled-modules';
+import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
+import type { ActivityType } from '@/lib/supabase/database.types';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,19 +38,39 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-const navItems = [
+const MODULE_ICON_MAP: Record<string, LucideIcon> = {
+  Trophy,
+  Award,
+  Dumbbell,
+  Tent,
+};
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const coreNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/club', label: 'Club', icon: Building2 },
   { href: '/members', label: 'Members', icon: Users },
+];
+
+const legacyActivityNav: NavItem[] = [
   { href: '/teams', label: 'Teams', icon: Shield },
   { href: '/fixtures', label: 'Fixtures', icon: Calendar },
+];
+
+const toolsNav: NavItem[] = [
   { href: '/payments', label: 'Payments', icon: DollarSign },
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/photos', label: 'Photos', icon: Camera },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 interface SidebarProps {
@@ -62,8 +91,21 @@ export function Sidebar({
   userLastName = '',
 }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
+  const { enabledModules } = useEnabledModules();
+
+  const moduleNavItems: NavItem[] = enabledModules.map((mod) => {
+    const config = ACTIVITY_TYPE_CONFIG[mod.activity_type as ActivityType];
+    return {
+      href: config.navHref,
+      label: config.label,
+      icon: MODULE_ICON_MAP[config.icon] ?? Calendar,
+    };
+  });
+
+  const activityNav = moduleNavItems.length > 0 ? moduleNavItems : legacyActivityNav;
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -71,75 +113,161 @@ export function Sidebar({
     router.push('/login');
   };
 
+  function isItemActive(href: string) {
+    const hrefPath = href.split('?')[0];
+    const hrefParams = new URLSearchParams(href.split('?')[1] || '');
+    return (
+      pathname.startsWith(hrefPath) &&
+      (!hrefParams.has('type') || searchParams.get('type') === hrefParams.get('type'))
+    );
+  }
+
+  function renderNavItem(item: NavItem) {
+    const active = isItemActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          'group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200',
+          collapsed ? 'justify-center px-2' : '',
+          active
+            ? 'bg-primary/10 text-primary font-semibold shadow-sm'
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+        )}
+        title={collapsed ? item.label : undefined}
+      >
+        <div
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-all duration-200',
+            active
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'bg-sidebar-accent/60 text-sidebar-foreground/60 group-hover:bg-sidebar-accent group-hover:text-sidebar-foreground'
+          )}
+        >
+          <item.icon className="h-[18px] w-[18px]" />
+        </div>
+        {!collapsed && (
+          <span className="truncate text-[13.5px]">{item.label}</span>
+        )}
+      </Link>
+    );
+  }
+
   return (
     <aside
       className={cn(
         'hidden h-screen flex-col border-r bg-sidebar transition-all duration-300 lg:flex',
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'w-[68px]' : 'w-[260px]'
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b px-4">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            {orgLogo ? (
-              <Image src={orgLogo} alt={orgName} width={32} height={32} className="h-8 w-8 rounded object-cover" />
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
-                {orgName.charAt(0)}
-              </div>
-            )}
-            <span className="font-semibold truncate">{orgName}</span>
-          </div>
+      {/* Org header */}
+      <div
+        className={cn(
+          'flex h-[68px] items-center border-b px-3',
+          collapsed ? 'justify-center cursor-pointer hover:bg-sidebar-accent/50 transition-colors' : 'justify-between'
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
+        onClick={collapsed ? () => setCollapsed(false) : undefined}
+        title={collapsed ? 'Expand sidebar' : undefined}
+      >
+        <div className={cn('flex items-center min-w-0', collapsed ? 'justify-center' : 'gap-2.5')}>
+          {orgLogo ? (
+            <Image
+              src={orgLogo}
+              alt={orgName}
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
+            />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground shadow-sm">
+              {orgName.charAt(0)}
+            </div>
+          )}
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold leading-tight">{orgName}</p>
+              <p className="text-[11px] text-muted-foreground">Sports Club</p>
+            </div>
+          )}
+        </div>
+        {!collapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => setCollapsed(true)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
-      <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-              )}
-              title={collapsed ? item.label : undefined}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3">
+        {/* Core */}
+        <div className="space-y-0.5">
+          {!collapsed && (
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Main
+            </p>
+          )}
+          {coreNav.map(renderNavItem)}
+        </div>
+
+        <Separator className="my-3 opacity-50" />
+
+        {/* Activities */}
+        <div className="space-y-0.5">
+          {!collapsed && (
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Activities
+            </p>
+          )}
+          {activityNav.map(renderNavItem)}
+        </div>
+
+        <Separator className="my-3 opacity-50" />
+
+        {/* Tools */}
+        <div className="space-y-0.5">
+          {!collapsed && (
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Tools
+            </p>
+          )}
+          {toolsNav.map(renderNavItem)}
+        </div>
+
+        <Separator className="my-3 opacity-50" />
+
+        {/* Settings */}
+        <div className="space-y-0.5">
+          {renderNavItem({ href: '/settings', label: 'Settings', icon: Settings })}
+        </div>
       </nav>
 
-      <div className="border-t p-2">
+      {/* User footer */}
+      <div className="border-t p-2.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent/50',
-                collapsed && 'justify-center'
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-sidebar-accent',
+                collapsed && 'justify-center px-2'
               )}
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-9 w-9 shadow-sm">
                 <AvatarImage src={userAvatar || undefined} />
-                <AvatarFallback className="text-xs">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                   {getInitials(userFirstName, userLastName)}
                 </AvatarFallback>
               </Avatar>
               {!collapsed && (
-                <span className="truncate font-medium">{userName}</span>
+                <div className="min-w-0 text-left">
+                  <p className="truncate text-sm font-medium leading-tight">{userName}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">Manage account</p>
+                </div>
               )}
             </button>
           </DropdownMenuTrigger>

@@ -36,6 +36,8 @@ export default function PaymentsPage() {
   const [bulkLoading, setBulkLoading] = useState(false);
 
   const isAdminOrManager = profile?.role === 'admin' || profile?.role === 'manager';
+  const [isGuardian, setIsGuardian] = useState(false);
+  const [dependentIds, setDependentIds] = useState<string[]>([]);
 
   const fetchPayments = useCallback(async () => {
     if (!organisation?.id) return;
@@ -48,7 +50,7 @@ export default function PaymentsPage() {
       .select('*, member:members(*, profile:profiles(*))', { count: 'exact' })
       .eq('organisation_id', organisation.id);
 
-    // If member role, only show own payments
+    // If not admin/manager, scope payments
     if (!isAdminOrManager && profile?.id) {
       const { data: memberRecord } = await supabase
         .from('members')
@@ -58,7 +60,22 @@ export default function PaymentsPage() {
         .single();
 
       if (memberRecord) {
-        query = query.eq('member_id', memberRecord.id);
+        // Check if user is a guardian (has dependents)
+        const { data: guardianLinks } = await supabase
+          .from('member_guardians')
+          .select('minor_member_id')
+          .eq('guardian_member_id', memberRecord.id);
+
+        const minorIds = (guardianLinks ?? []).map((g) => g.minor_member_id);
+
+        if (minorIds.length > 0) {
+          setIsGuardian(true);
+          setDependentIds(minorIds);
+          // Show own payments + dependent payments
+          query = query.in('member_id', [memberRecord.id, ...minorIds]);
+        } else {
+          query = query.eq('member_id', memberRecord.id);
+        }
       }
     }
 
@@ -260,19 +277,28 @@ export default function PaymentsPage() {
       {isAdminOrManager && summary ? (
         <PaymentSummaryCards summary={summary} />
       ) : !isAdminOrManager ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard
-            title="Total Owed"
-            value={formatCurrency(totalOwed)}
-            subtitle="Outstanding balance"
-            icon={DollarSign}
-          />
-          <StatCard
-            title="Next Payment Due"
-            value={nextDue ? formatDate(nextDue.due_date) : 'None'}
-            subtitle={nextDue ? nextDue.description : 'No upcoming payments'}
-            icon={Calendar}
-          />
+        <div className="space-y-4">
+          {isGuardian && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+              <p className="text-sm font-medium text-blue-800">
+                Showing payments for you and your {dependentIds.length} dependent{dependentIds.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              title="Total Owed"
+              value={formatCurrency(totalOwed)}
+              subtitle={isGuardian ? 'Combined outstanding balance' : 'Outstanding balance'}
+              icon={DollarSign}
+            />
+            <StatCard
+              title="Next Payment Due"
+              value={nextDue ? formatDate(nextDue.due_date) : 'None'}
+              subtitle={nextDue ? nextDue.description : 'No upcoming payments'}
+              icon={Calendar}
+            />
+          </div>
         </div>
       ) : null}
 

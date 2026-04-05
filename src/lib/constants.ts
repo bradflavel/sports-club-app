@@ -207,3 +207,74 @@ export const DOCUMENT_CATEGORY_OPTIONS = [
   { value: 'constitution', label: 'Constitution' },
   { value: 'other', label: 'Other' },
 ] as const;
+
+// Activity module system
+export const ACTIVITY_TYPE_CONFIG = {
+  competition: {
+    label: 'Competitions',
+    singularLabel: 'Competition',
+    icon: 'Trophy',
+    description: 'Seasonal competitions with rounds, ladders, and finals',
+    navHref: '/activities?type=competition',
+  },
+  tournament: {
+    label: 'Tournaments',
+    singularLabel: 'Tournament',
+    icon: 'Award',
+    description: 'Short-term events over 1-3 days with pools and brackets',
+    navHref: '/activities?type=tournament',
+  },
+  training_session: {
+    label: 'Training',
+    singularLabel: 'Training Session',
+    icon: 'Dumbbell',
+    description: 'Recurring or one-off training sessions with attendance tracking',
+    navHref: '/activities?type=training_session',
+  },
+  training_camp: {
+    label: 'Camps',
+    singularLabel: 'Training Camp',
+    icon: 'Tent',
+    description: 'Multi-day training camps with scheduled sessions',
+    navHref: '/activities?type=training_camp',
+  },
+} as const;
+
+export const ACTIVITY_TYPE_OPTIONS = Object.entries(ACTIVITY_TYPE_CONFIG).map(
+  ([value, config]) => ({
+    value: value as import('@/lib/supabase/database.types').ActivityType,
+    label: config.singularLabel,
+  })
+);
+
+export const PARTICIPATION_MODE_OPTIONS = [
+  { value: 'participant', label: 'Participating', description: 'Your club is entered in this activity' },
+  { value: 'organiser', label: 'Organising', description: 'Your club is running this activity' },
+] as const;
+
+export const EVENT_STATUS_OPTIONS = [
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'postponed', label: 'Postponed' },
+  { value: 'bye', label: 'Bye' },
+] as const;
+
+export const ATTENDANCE_STATUS_OPTIONS = [
+  { value: 'attending', label: 'Attending' },
+  { value: 'not_attending', label: 'Not Attending' },
+  { value: 'maybe', label: 'Maybe' },
+  { value: 'attended', label: 'Attended' },
+  { value: 'absent', label: 'Absent' },
+  { value: 'late', label: 'Late' },
+] as const;
+
+export const TOURNAMENT_STAGE_OPTIONS = [
+  { value: 'pool', label: 'Pool Play' },
+  { value: 'quarterfinal', label: 'Quarter Final' },
+  { value: 'semifinal', label: 'Semi Final' },
+  { value: 'final', label: 'Final' },
+  { value: 'third_place', label: 'Third Place' },
+  { value: 'round_robin', label: 'Round Robin' },
+] as const;

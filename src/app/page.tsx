@@ -23,8 +23,8 @@ const features = [
   },
   {
     icon: Calendar,
-    title: 'Fixtures & Draws',
-    description: 'Schedule matches, record results, and keep your season on track.',
+    title: 'Competitions & Events',
+    description: 'Manage competitions, tournaments, training sessions, and more.',
   },
   {
     icon: Shield,
@@ -72,7 +72,7 @@ export default function LandingPage() {
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
           ClubConnect is the all-in-one platform for managing your sports club. From member
-          registrations and payments to fixtures and team management — we&apos;ve got you covered.
+          registrations and payments to competitions and team management — we&apos;ve got you covered.
         </p>
         <div className="mt-10 flex gap-4">
           <Link href="/signup">

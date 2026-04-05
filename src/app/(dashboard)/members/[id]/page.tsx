@@ -11,6 +11,7 @@ import {
   Shield,
   UserCheck,
   PauseCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
@@ -30,25 +31,27 @@ import { MemberProfileCard } from '@/features/members/components/member-profile-
 import { MemberStats } from '@/features/members/components/member-stats';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { formatDate, formatCurrency, formatDateTime } from '@/lib/format';
-import type { MemberWithProfile } from '@/features/members/types/member-types';
+import { formatDate, formatCurrency, formatDateTime, calculateAge, isMinor } from '@/lib/format';
+import { transitionToSenior } from '@/features/members/services/age-transition-service';
+import {
+  getGuardiansForMember,
+  getDependentsForMember,
+} from '@/features/members/services/guardian-service';
+import type { MemberWithProfile, MemberGuardian } from '@/features/members/types/member-types';
 import type {
-  TeamMember,
-  Team,
+  ActivityTeamMember,
+  ActivityTeam,
+  ActivityEventWithTeams,
   Payment,
-  Fixture,
   MembershipStatus,
 } from '@/lib/supabase/database.types';
 
-interface TeamMemberRow extends TeamMember {
-  team: Team;
+interface ActivityTeamMemberRow extends ActivityTeamMember {
+  team: ActivityTeam & { activity?: { name: string } | null };
 }
 
 interface PaymentRow extends Payment {}
 
-interface FixtureRow extends Fixture {
-  team: Team;
-}
 
 export default function MemberProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -56,9 +59,15 @@ export default function MemberProfilePage() {
   const { toast } = useToast();
 
   const [member, setMember] = useState<MemberWithProfile | null>(null);
-  const [teamMemberships, setTeamMemberships] = useState<TeamMemberRow[]>([]);
+  const [teamMemberships, setTeamMemberships] = useState<ActivityTeamMemberRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
-  const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
+  const [events, setEvents] = useState<ActivityEventWithTeams[]>([]);
+  const [guardianLinks, setGuardianLinks] = useState<
+    (MemberGuardian & { guardian: MemberWithProfile })[]
+  >([]);
+  const [dependentLinks, setDependentLinks] = useState<
+    (MemberGuardian & { minor: MemberWithProfile })[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -67,8 +76,8 @@ export default function MemberProfilePage() {
     const [memberResult, teamResult, paymentResult] = await Promise.all([
       supabase.from('members').select('*, profile:profiles(*)').eq('id', id).single(),
       supabase
-        .from('team_members')
-        .select('*, team:teams(*)')
+        .from('activity_team_members')
+        .select('*, team:activity_teams(*, activity:activities(name))')
         .eq('member_id', id)
         .order('joined_at', { ascending: false }),
       supabase
@@ -83,22 +92,37 @@ export default function MemberProfilePage() {
       setMember(m);
 
       if (teamResult.data && teamResult.data.length > 0) {
-        setTeamMemberships(teamResult.data as unknown as TeamMemberRow[]);
+        setTeamMemberships(teamResult.data as unknown as ActivityTeamMemberRow[]);
 
-        const teamIds = teamResult.data.map((tm) => tm.team_id);
-        const { data: fixtureData } = await supabase
-          .from('fixtures')
-          .select('*, team:teams(*)')
-          .in('team_id', teamIds)
+        const activityTeamIds = teamResult.data.map((tm) => tm.activity_team_id);
+        const { data: eventData } = await supabase
+          .from('activity_events')
+          .select('*, home_team:activity_teams!activity_events_home_team_id_fkey(*), away_team:activity_teams!activity_events_away_team_id_fkey(*), activity:activities(*)')
+          .or(activityTeamIds.map((id) => `home_team_id.eq.${id}`).join(',') + ',' + activityTeamIds.map((id) => `away_team_id.eq.${id}`).join(','))
           .order('date_time', { ascending: false })
           .limit(20);
 
-        if (fixtureData) setFixtures(fixtureData as unknown as FixtureRow[]);
+        if (eventData) setEvents(eventData as unknown as ActivityEventWithTeams[]);
       }
     }
 
     if (paymentResult.data) {
       setPayments(paymentResult.data as PaymentRow[]);
+    }
+
+    // Fetch guardian relationships
+    if (memberResult.data) {
+      const m = memberResult.data as unknown as MemberWithProfile;
+
+      // If junior, fetch guardians
+      if (m.membership_type === 'junior') {
+        const { data: guardians } = await getGuardiansForMember(id);
+        if (guardians) setGuardianLinks(guardians);
+      }
+
+      // Check if this member is a guardian of others
+      const { data: dependents } = await getDependentsForMember(id);
+      if (dependents && dependents.length > 0) setDependentLinks(dependents);
     }
 
     setLoading(false);
@@ -216,7 +240,55 @@ export default function MemberProfilePage() {
         }
       />
 
-      <MemberProfileCard member={member} showEdit />
+      <MemberProfileCard
+        member={member}
+        showEdit
+        guardians={guardianLinks.map((g) => ({
+          name: `${g.guardian.profile.first_name} ${g.guardian.profile.last_name}`,
+          relationship: g.relationship,
+        }))}
+      />
+      {/* Age-out transition banner */}
+      {member.membership_type === 'junior' &&
+        member.profile.date_of_birth &&
+        !isMinor(member.profile.date_of_birth) && (
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-medium text-amber-800">
+                  This member is {calculateAge(member.profile.date_of_birth)} and still registered as
+                  Junior
+                </p>
+                <p className="mt-0.5 text-sm text-amber-700">
+                  Transitioning will change their membership to Senior, copy guardian contact details
+                  to emergency contacts, and remove guardian links.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
+              onClick={async () => {
+                const { error } = await transitionToSenior(id);
+                if (error) {
+                  toast({
+                    title: 'Error',
+                    description: String(error),
+                    variant: 'destructive',
+                  });
+                } else {
+                  toast({ title: 'Member transitioned to Senior' });
+                  fetchData();
+                }
+              }}
+            >
+              Transition to Senior
+            </Button>
+          </div>
+        )}
+
       <MemberStats memberId={id} />
 
       <Tabs defaultValue="overview">
@@ -238,7 +310,23 @@ export default function MemberProfilePage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="matches">Match History</TabsTrigger>
+          <TabsTrigger value="matches">Event History</TabsTrigger>
+          {member.membership_type === 'junior' && guardianLinks.length > 0 && (
+            <TabsTrigger value="guardians">
+              Guardians
+              <Badge variant="secondary" className="ml-1.5 h-5 rounded-full px-1.5 text-xs">
+                {guardianLinks.length}
+              </Badge>
+            </TabsTrigger>
+          )}
+          {dependentLinks.length > 0 && (
+            <TabsTrigger value="dependents">
+              Dependents
+              <Badge variant="secondary" className="ml-1.5 h-5 rounded-full px-1.5 text-xs">
+                {dependentLinks.length}
+              </Badge>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -358,14 +446,14 @@ export default function MemberProfilePage() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <Link
-                          href={`/teams/${tm.team_id}`}
-                          className="font-medium hover:underline truncate block"
-                        >
+                        <p className="font-medium truncate block">
                           {tm.team.name}
-                        </Link>
+                        </p>
                         {tm.team.division && (
                           <p className="text-xs text-muted-foreground">{tm.team.division}</p>
+                        )}
+                        {tm.team.activity?.name && (
+                          <p className="text-xs text-muted-foreground">{tm.team.activity.name}</p>
                         )}
                       </div>
                       {tm.is_captain && (
@@ -461,14 +549,105 @@ export default function MemberProfilePage() {
           )}
         </TabsContent>
 
-        {/* Match History Tab */}
+        {/* Guardians Tab (for junior members) */}
+        {member.membership_type === 'junior' && guardianLinks.length > 0 && (
+          <TabsContent value="guardians" className="mt-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {guardianLinks.map((link) => (
+                <Card key={link.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/members/${link.guardian.id}`}
+                          className="font-medium hover:underline truncate block"
+                        >
+                          {link.guardian.profile.first_name} {link.guardian.profile.last_name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {link.relationship.replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                      {link.is_primary && (
+                        <Badge variant="default" className="shrink-0 text-xs">Primary</Badge>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-col gap-1 text-xs text-muted-foreground">
+                      <span>{link.guardian.profile.email}</span>
+                      {link.guardian.profile.phone && <span>{link.guardian.profile.phone}</span>}
+                      <span>
+                        Consent:{' '}
+                        {link.parental_consent_given ? (
+                          <span className="text-emerald-600">Given</span>
+                        ) : (
+                          <span className="text-destructive">Not given</span>
+                        )}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Dependents Tab (for guardians) */}
+        {dependentLinks.length > 0 && (
+          <TabsContent value="dependents" className="mt-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {dependentLinks.map((link) => {
+                const minorAge = link.minor.profile.date_of_birth
+                  ? calculateAge(link.minor.profile.date_of_birth)
+                  : null;
+                return (
+                  <Card key={link.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/members/${link.minor.id}`}
+                            className="font-medium hover:underline truncate block"
+                          >
+                            {link.minor.profile.first_name} {link.minor.profile.last_name}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            {minorAge !== null ? `${minorAge} yrs` : 'Age unknown'} · {link.relationship.replace(/_/g, ' ')}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 shrink-0 text-xs">
+                          Minor
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>
+                          <span className="font-medium">Status:</span>{' '}
+                          <StatusBadge status={link.minor.membership_status} />
+                        </span>
+                        <span>
+                          Consent:{' '}
+                          {link.parental_consent_given ? (
+                            <span className="text-emerald-600">Given</span>
+                          ) : (
+                            <span className="text-destructive">Not given</span>
+                          )}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Event History Tab */}
         <TabsContent value="matches" className="mt-4">
-          {fixtures.length === 0 ? (
+          {events.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                <p className="font-medium">No match history</p>
+                <p className="font-medium">No event history</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  No fixtures found for this member&apos;s teams.
+                  No events found for this member&apos;s teams.
                 </p>
               </CardContent>
             </Card>
@@ -482,10 +661,10 @@ export default function MemberProfilePage() {
                         Date
                       </th>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                        Team
+                        Home
                       </th>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                        Opponent
+                        Away
                       </th>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                         Venue
@@ -499,36 +678,33 @@ export default function MemberProfilePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {fixtures.map((fixture) => (
-                      <tr key={fixture.id} className="border-b last:border-0">
+                    {events.map((event) => (
+                      <tr key={event.id} className="border-b last:border-0">
                         <td className="px-4 py-3 text-muted-foreground">
-                          {formatDateTime(fixture.date_time)}
+                          {formatDateTime(event.date_time)}
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {event.home_team?.name ?? event.opponent_name ?? '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <Link
-                            href={`/teams/${fixture.team_id}`}
-                            className="hover:underline font-medium"
-                          >
-                            {fixture.team.name}
-                          </Link>
+                          {event.away_team?.name ?? event.opponent_name ?? '—'}
                         </td>
-                        <td className="px-4 py-3">{fixture.opponent_name}</td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {fixture.venue ?? '—'}
+                          {event.venue ?? '—'}
                         </td>
                         <td className="px-4 py-3">
-                          {fixture.home_score != null && fixture.away_score != null ? (
+                          {event.home_score != null && event.away_score != null ? (
                             <span>
-                              {fixture.is_home ? fixture.home_score : fixture.away_score}
+                              {event.home_score}
                               {' – '}
-                              {fixture.is_home ? fixture.away_score : fixture.home_score}
+                              {event.away_score}
                             </span>
                           ) : (
                             '—'
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge status={fixture.status} />
+                          <StatusBadge status={event.status} />
                         </td>
                       </tr>
                     ))}

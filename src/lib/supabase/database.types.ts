@@ -30,6 +30,14 @@ export type PaymentType =
   | 'other';
 export type PaymentStatus = 'pending' | 'paid' | 'overdue' | 'cancelled' | 'refunded';
 export type DocumentCategory = 'policy' | 'minutes' | 'report' | 'form' | 'constitution' | 'other';
+export type GuardianRelationship = 'parent' | 'grandparent' | 'legal_guardian' | 'other';
+
+// Activity system types
+export type ActivityType = 'competition' | 'tournament' | 'training_session' | 'training_camp';
+export type ParticipationMode = 'participant' | 'organiser';
+export type EventStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'postponed' | 'bye';
+export type AttendanceStatus = 'attending' | 'not_attending' | 'maybe' | 'attended' | 'absent' | 'late';
+export type TournamentStage = 'pool' | 'quarterfinal' | 'semifinal' | 'final' | 'third_place' | 'round_robin';
 
 export interface Organisation {
   id: string;
@@ -43,6 +51,60 @@ export interface Organisation {
   contact_phone: string | null;
   address: string | null;
   website: string | null;
+  // Business (added in migration 00014 - all have DB defaults so optional on insert)
+  abn?: string | null;
+  abn_entity_name?: string | null;
+  timezone?: string;
+  // Affiliations
+  affiliated_body?: string | null;
+  affiliation_number?: string | null;
+  insurance_provider?: string | null;
+  insurance_policy_number?: string | null;
+  // Financials
+  default_payment_terms_days?: number;
+  late_fee_cents?: number | null;
+  bank_name?: string | null;
+  bank_bsb?: string | null;
+  bank_account_number?: string | null;
+  bank_account_name?: string | null;
+  is_gst_registered?: boolean;
+  // Membership
+  minimum_age?: number | null;
+  registration_open?: boolean;
+  // Legal
+  privacy_policy_url?: string | null;
+  terms_conditions_url?: string | null;
+  code_of_conduct_url?: string | null;
+  child_safety_policy_url?: string | null;
+  registration_consent_text?: string | null;
+  // Social
+  facebook_url?: string | null;
+  instagram_url?: string | null;
+  youtube_url?: string | null;
+  tiktok_url?: string | null;
+  // Review
+  details_reviewed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClubVenue {
+  id: string;
+  organisation_id: string;
+  name: string;
+  address: string | null;
+  is_primary: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipFeeSchedule {
+  id: string;
+  organisation_id: string;
+  membership_type: MembershipType;
+  amount_cents: number;
+  label: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -225,6 +287,165 @@ export interface AnnouncementWithAuthor extends Announcement {
   author: Profile;
 }
 
+export interface MemberGuardian {
+  id: string;
+  guardian_member_id: string;
+  minor_member_id: string;
+  relationship: GuardianRelationship;
+  is_primary: boolean;
+  parental_consent_given: boolean;
+  consent_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MemberGuardianWithDetails extends MemberGuardian {
+  guardian: MemberWithProfile;
+  minor: MemberWithProfile;
+}
+
+// Activity system interfaces
+export interface OrganisationModule {
+  id: string;
+  organisation_id: string;
+  activity_type: ActivityType;
+  is_enabled: boolean;
+  display_order: number;
+  created_at: string;
+}
+
+export interface Activity {
+  id: string;
+  organisation_id: string;
+  activity_type: ActivityType;
+  participation_mode: ParticipationMode;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean;
+  total_rounds: number | null;
+  has_finals: boolean | null;
+  pool_count: number | null;
+  recurrence_rule: string | null;
+  default_venue: string | null;
+  default_start_time: string | null;
+  default_duration_minutes: number | null;
+  parent_activity_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityWithDetails extends Activity {
+  teams?: ActivityTeam[];
+  event_count?: number;
+  parent_activity?: Activity | null;
+}
+
+export interface ActivityTeam {
+  id: string;
+  activity_id: string;
+  organisation_id: string;
+  name: string;
+  division: string | null;
+  age_group: string | null;
+  coach_id: string | null;
+  manager_id: string | null;
+  max_players: number;
+  is_own_team: boolean;
+  source_team_id: string | null;
+  pool_number: number | null;
+  seed_number: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityTeamWithDetails extends ActivityTeam {
+  coach: Profile | null;
+  manager: Profile | null;
+  activity: Activity | null;
+  member_count?: number;
+}
+
+export interface ActivityTeamMember {
+  id: string;
+  activity_team_id: string;
+  member_id: string;
+  jersey_number: number | null;
+  position: string | null;
+  is_captain: boolean;
+  joined_at: string;
+}
+
+export interface ActivityTeamMemberWithDetails extends ActivityTeamMember {
+  member: MemberWithProfile;
+}
+
+export interface ActivityEvent {
+  id: string;
+  activity_id: string;
+  organisation_id: string;
+  home_team_id: string | null;
+  away_team_id: string | null;
+  opponent_name: string | null;
+  is_home: boolean | null;
+  home_score: number | null;
+  away_score: number | null;
+  round_number: number | null;
+  tournament_stage: TournamentStage | null;
+  pool_number: number | null;
+  bracket_position: number | null;
+  title: string | null;
+  venue: string | null;
+  date_time: string;
+  end_time: string | null;
+  status: EventStatus;
+  notes: string | null;
+  day_number: number | null;
+  session_number: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityEventWithTeams extends ActivityEvent {
+  home_team: ActivityTeam | null;
+  away_team: ActivityTeam | null;
+  activity: Activity | null;
+}
+
+export interface ActivityEventAttendance {
+  id: string;
+  event_id: string;
+  member_id: string;
+  status: AttendanceStatus;
+  checked_in_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ActivityEventAttendanceWithMember extends ActivityEventAttendance {
+  member: MemberWithProfile;
+}
+
+export interface ActivityStanding {
+  id: string;
+  activity_id: string;
+  team_id: string;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  points_for: number;
+  points_against: number;
+  bonus_points: number;
+  ladder_points: number;
+  updated_at: string;
+}
+
+export interface ActivityStandingWithTeam extends ActivityStanding {
+  team: ActivityTeam;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -300,6 +521,66 @@ export interface Database {
         Update: Partial<Omit<Announcement, 'id' | 'created_at'>> & Record<string, unknown>;
         Relationships: [];
       };
+      member_guardians: {
+        Row: MemberGuardian & Record<string, unknown>;
+        Insert: Omit<MemberGuardian, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<MemberGuardian, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      organisation_modules: {
+        Row: OrganisationModule & Record<string, unknown>;
+        Insert: Omit<OrganisationModule, 'id' | 'created_at'> & Record<string, unknown>;
+        Update: Partial<Omit<OrganisationModule, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      activities: {
+        Row: Activity & Record<string, unknown>;
+        Insert: Omit<Activity, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<Activity, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      activity_teams: {
+        Row: ActivityTeam & Record<string, unknown>;
+        Insert: Omit<ActivityTeam, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<ActivityTeam, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      activity_team_members: {
+        Row: ActivityTeamMember & Record<string, unknown>;
+        Insert: Omit<ActivityTeamMember, 'id' | 'joined_at'> & Record<string, unknown>;
+        Update: Partial<Omit<ActivityTeamMember, 'id'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      activity_events: {
+        Row: ActivityEvent & Record<string, unknown>;
+        Insert: Omit<ActivityEvent, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<ActivityEvent, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      activity_event_attendance: {
+        Row: ActivityEventAttendance & Record<string, unknown>;
+        Insert: Omit<ActivityEventAttendance, 'id' | 'created_at'> & Record<string, unknown>;
+        Update: Partial<Omit<ActivityEventAttendance, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      activity_standings: {
+        Row: ActivityStanding & Record<string, unknown>;
+        Insert: Omit<ActivityStanding, 'id'> & Record<string, unknown>;
+        Update: Partial<Omit<ActivityStanding, 'id'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      club_venues: {
+        Row: ClubVenue & Record<string, unknown>;
+        Insert: Omit<ClubVenue, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<ClubVenue, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      membership_fee_schedule: {
+        Row: MembershipFeeSchedule & Record<string, unknown>;
+        Insert: Omit<MembershipFeeSchedule, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<MembershipFeeSchedule, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
     };
     Views: Record<string, { Row: Record<string, unknown>; Relationships: [] }>;
     Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>;
@@ -312,6 +593,12 @@ export interface Database {
       payment_type: PaymentType;
       payment_status: PaymentStatus;
       document_category: DocumentCategory;
+      guardian_relationship: GuardianRelationship;
+      activity_type: ActivityType;
+      participation_mode: ParticipationMode;
+      event_status: EventStatus;
+      attendance_status: AttendanceStatus;
+      tournament_stage: TournamentStage;
     };
   };
 }
