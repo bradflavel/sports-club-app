@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { Organisation, ClubVenue, MembershipFeeSchedule } from '@/lib/supabase/database.types';
+import type { Organisation, ClubVenue, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 interface CompletionItem {
   label: string;
@@ -13,7 +13,7 @@ interface CompletionItem {
 export function getCompletionItems(
   org: Organisation,
   venues: ClubVenue[],
-  feeSchedule: MembershipFeeSchedule[]
+  membershipTypes: MembershipTypeRecord[]
 ): CompletionItem[] {
   return [
     { label: 'Club name', completed: !!org.name, editTab: 'details', category: 'Details' },
@@ -21,6 +21,7 @@ export function getCompletionItems(
     { label: 'Club logo', completed: !!org.logo_url, editTab: 'details', category: 'Details' },
     { label: 'ABN', completed: !!org.abn, editTab: 'details', category: 'Details' },
     { label: 'Timezone', completed: !!org.timezone, editTab: 'details', category: 'Details' },
+    { label: 'State', completed: !!org.state, editTab: 'details', category: 'Details' },
     { label: 'Contact email', completed: !!org.contact_email, editTab: 'contact', category: 'Contact' },
     { label: 'Contact phone', completed: !!org.contact_phone, editTab: 'contact', category: 'Contact' },
     { label: 'Website', completed: !!org.website, editTab: 'contact', category: 'Contact' },
@@ -29,7 +30,7 @@ export function getCompletionItems(
     { label: 'Governing body', completed: !!org.affiliated_body, editTab: 'affiliations', category: 'Affiliations' },
     { label: 'Insurance provider', completed: !!org.insurance_provider, editTab: 'affiliations', category: 'Affiliations' },
     { label: 'Insurance policy number', completed: !!org.insurance_policy_number, editTab: 'affiliations', category: 'Affiliations' },
-    { label: 'Fee schedule configured', completed: feeSchedule.length > 0, editTab: 'membership', category: 'Membership' },
+    { label: 'Membership types configured', completed: membershipTypes.length > 0, editTab: 'membership', category: 'Membership' },
     { label: 'Bank details', completed: !!(org.bank_bsb && org.bank_account_number), editTab: 'financials', category: 'Financials' },
     { label: 'Payment terms', completed: !!org.default_payment_terms_days, editTab: 'financials', category: 'Financials' },
     { label: 'Privacy policy', completed: !!org.privacy_policy_url, editTab: 'legal', category: 'Legal' },
@@ -40,9 +41,9 @@ export function getCompletionItems(
 export function getCompletionPercentage(
   org: Organisation,
   venues: ClubVenue[],
-  feeSchedule: MembershipFeeSchedule[]
+  membershipTypes: MembershipTypeRecord[]
 ): number {
-  const items = getCompletionItems(org, venues, feeSchedule);
+  const items = getCompletionItems(org, venues, membershipTypes);
   return Math.round((items.filter((i) => i.completed).length / items.length) * 100);
 }
 
@@ -53,11 +54,11 @@ export function getCompletionPercentage(
 interface ClubCompletionBadgeProps {
   organisation: Organisation;
   venues: ClubVenue[];
-  feeSchedule: MembershipFeeSchedule[];
+  membershipTypes: MembershipTypeRecord[];
 }
 
-export function ClubCompletionBadge({ organisation, venues, feeSchedule }: ClubCompletionBadgeProps) {
-  const percentage = getCompletionPercentage(organisation, venues, feeSchedule);
+export function ClubCompletionBadge({ organisation, venues, membershipTypes }: ClubCompletionBadgeProps) {
+  const percentage = getCompletionPercentage(organisation, venues, membershipTypes);
 
   if (percentage === 100) return null;
 

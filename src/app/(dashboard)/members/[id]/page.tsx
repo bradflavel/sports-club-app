@@ -32,7 +32,7 @@ import { MemberStats } from '@/features/members/components/member-stats';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency, formatDateTime, calculateAge, isMinor } from '@/lib/format';
-import { transitionToSenior } from '@/features/members/services/age-transition-service';
+import { processAgeOut } from '@/features/members/services/age-transition-service';
 import {
   getGuardiansForMember,
   getDependentsForMember,
@@ -114,11 +114,9 @@ export default function MemberProfilePage() {
     if (memberResult.data) {
       const m = memberResult.data as unknown as MemberWithProfile;
 
-      // If junior, fetch guardians
-      if (m.membership_type === 'junior') {
-        const { data: guardians } = await getGuardiansForMember(id);
-        if (guardians) setGuardianLinks(guardians);
-      }
+      // Fetch guardians for any member (not just juniors)
+      const { data: guardians } = await getGuardiansForMember(id);
+      if (guardians) setGuardianLinks(guardians);
 
       // Check if this member is a guardian of others
       const { data: dependents } = await getDependentsForMember(id);
@@ -249,20 +247,19 @@ export default function MemberProfilePage() {
         }))}
       />
       {/* Age-out transition banner */}
-      {member.membership_type === 'junior' &&
-        member.profile.date_of_birth &&
-        !isMinor(member.profile.date_of_birth) && (
+      {member.profile.date_of_birth &&
+        !isMinor(member.profile.date_of_birth) &&
+        guardianLinks.length > 0 && (
           <div className="flex items-start justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               <div>
                 <p className="font-medium text-amber-800">
-                  This member is {calculateAge(member.profile.date_of_birth)} and still registered as
-                  Junior
+                  This member is {calculateAge(member.profile.date_of_birth)} and has turned 18 but still has guardian links
                 </p>
                 <p className="mt-0.5 text-sm text-amber-700">
-                  Transitioning will change their membership to Senior, copy guardian contact details
-                  to emergency contacts, and remove guardian links.
+                  Processing will copy guardian contact details to emergency contacts and remove
+                  guardian links.
                 </p>
               </div>
             </div>
@@ -271,7 +268,7 @@ export default function MemberProfilePage() {
               variant="outline"
               className="shrink-0 border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
               onClick={async () => {
-                const { error } = await transitionToSenior(id);
+                const { error } = await processAgeOut(id);
                 if (error) {
                   toast({
                     title: 'Error',
@@ -279,12 +276,12 @@ export default function MemberProfilePage() {
                     variant: 'destructive',
                   });
                 } else {
-                  toast({ title: 'Member transitioned to Senior' });
+                  toast({ title: 'Age-out processed — guardians removed' });
                   fetchData();
                 }
               }}
             >
-              Transition to Senior
+              Process Age-Out
             </Button>
           </div>
         )}
@@ -311,7 +308,7 @@ export default function MemberProfilePage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="matches">Event History</TabsTrigger>
-          {member.membership_type === 'junior' && guardianLinks.length > 0 && (
+          {guardianLinks.length > 0 && (
             <TabsTrigger value="guardians">
               Guardians
               <Badge variant="secondary" className="ml-1.5 h-5 rounded-full px-1.5 text-xs">
@@ -549,8 +546,8 @@ export default function MemberProfilePage() {
           )}
         </TabsContent>
 
-        {/* Guardians Tab (for junior members) */}
-        {member.membership_type === 'junior' && guardianLinks.length > 0 && (
+        {/* Guardians Tab */}
+        {guardianLinks.length > 0 && (
           <TabsContent value="guardians" className="mt-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {guardianLinks.map((link) => (

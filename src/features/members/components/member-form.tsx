@@ -21,16 +21,17 @@ import { Loader2, AlertTriangle } from 'lucide-react';
 import { calculateAge, isMinor } from '@/lib/format';
 import { GuardianSearch } from './guardian-search';
 import type { GuardianEntry } from './guardian-search';
-import type { GuardianRelationship } from '@/lib/supabase/database.types';
+import type { GuardianRelationship, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 interface MemberFormProps {
   defaultValues?: Partial<MemberInput>;
   onSubmit: (data: MemberInput) => Promise<void>;
   loading?: boolean;
   orgId?: string;
+  membershipTypes?: MembershipTypeRecord[];
 }
 
-export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: MemberFormProps) {
+export function MemberForm({ defaultValues, onSubmit, loading = false, orgId, membershipTypes }: MemberFormProps) {
   const {
     register,
     handleSubmit,
@@ -45,7 +46,8 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
       email: '',
       phone: '',
       dateOfBirth: '',
-      membershipType: undefined,
+      membershipTypeId: undefined,
+      isMinor: false,
       registrationDate: new Date().toISOString().split('T')[0],
       expiryDate: '',
       medicalConditions: '',
@@ -58,23 +60,19 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
     },
   });
 
-  const membershipType = watch('membershipType');
+  const membershipTypeId = watch('membershipTypeId');
   const dateOfBirth = watch('dateOfBirth');
   const guardians = watch('guardians') ?? [];
-  const isJunior = membershipType === 'junior';
+  const isMinorMember = dateOfBirth ? isMinor(dateOfBirth) : false;
 
-  // Auto-suggest junior when DOB indicates under 18
+  // Keep the isMinor field in sync with DOB
   useEffect(() => {
-    if (dateOfBirth && membershipType !== 'junior') {
-      if (isMinor(dateOfBirth)) {
-        setValue('membershipType', 'junior', { shouldValidate: true });
-      }
-    }
-  }, [dateOfBirth, membershipType, setValue]);
+    setValue('isMinor', isMinorMember);
+  }, [isMinorMember, setValue]);
 
-  // Show warning when a junior member's DOB indicates they've turned 18
+  // Show warning when DOB indicates they've turned 18
   const showAgeWarning =
-    isJunior && dateOfBirth && !isMinor(dateOfBirth);
+    dateOfBirth && !isMinor(dateOfBirth) && calculateAge(dateOfBirth) < 21;
 
   const age = dateOfBirth ? calculateAge(dateOfBirth) : null;
 
@@ -110,8 +108,7 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
               This member is {age} years old
             </p>
             <p className="text-sm text-amber-700">
-              Their date of birth indicates they are 18 or older. Consider changing the
-              membership type to Senior.
+              Their date of birth indicates they are 18 or older.
             </p>
           </div>
         </div>
@@ -182,7 +179,7 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
           <div className="space-y-2">
             <Label htmlFor="dateOfBirth">
               Date of Birth{' '}
-              {isJunior && <span className="text-destructive">*</span>}
+              {isMinorMember && <span className="text-destructive">*</span>}
             </Label>
             <Input
               id="dateOfBirth"
@@ -209,30 +206,34 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="membershipType">
-              Membership Type <span className="text-destructive">*</span>
+            <Label htmlFor="membershipTypeId">
+              Membership Type
             </Label>
-            <Select
-              value={membershipType}
-              onValueChange={(val) =>
-                setValue('membershipType', val as MemberInput['membershipType'], {
-                  shouldValidate: true,
-                })
-              }
-            >
-              <SelectTrigger id="membershipType" aria-invalid={!!errors.membershipType}>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="senior">Senior</SelectItem>
-                <SelectItem value="junior">Junior</SelectItem>
-                <SelectItem value="social">Social</SelectItem>
-                <SelectItem value="life">Life</SelectItem>
-                <SelectItem value="volunteer">Volunteer</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.membershipType && (
-              <p className="text-xs text-destructive">{errors.membershipType.message}</p>
+            {membershipTypes && membershipTypes.length > 0 ? (
+              <Select
+                value={membershipTypeId}
+                onValueChange={(val) =>
+                  setValue('membershipTypeId', val, {
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger id="membershipTypeId" aria-invalid={!!errors.membershipTypeId}>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {membershipTypes.map((mt) => (
+                    <SelectItem key={mt.id} value={mt.id}>
+                      {mt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-muted-foreground">No membership types configured</p>
+            )}
+            {errors.membershipTypeId && (
+              <p className="text-xs text-destructive">{errors.membershipTypeId.message}</p>
             )}
           </div>
 
@@ -262,8 +263,8 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
         </CardContent>
       </Card>
 
-      {/* Guardian section - shown for junior members */}
-      {isJunior && orgId && (
+      {/* Guardian section - shown for minor members */}
+      {isMinorMember && orgId && (
         <GuardianSearch
           orgId={orgId}
           guardians={guardianEntries}
@@ -309,7 +310,7 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
           <div className="space-y-2">
             <Label htmlFor="emergencyContactName">
               Contact Name{' '}
-              {isJunior && <span className="text-destructive">*</span>}
+              {isMinorMember && <span className="text-destructive">*</span>}
             </Label>
             <Input
               id="emergencyContactName"
@@ -327,7 +328,7 @@ export function MemberForm({ defaultValues, onSubmit, loading = false, orgId }: 
           <div className="space-y-2">
             <Label htmlFor="emergencyContactPhone">
               Contact Phone{' '}
-              {isJunior && <span className="text-destructive">*</span>}
+              {isMinorMember && <span className="text-destructive">*</span>}
             </Label>
             <Input
               id="emergencyContactPhone"

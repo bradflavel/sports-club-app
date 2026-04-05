@@ -80,12 +80,8 @@ export default function NewMemberPage() {
         .insert({
           profile_id: profileId,
           organisation_id: organisation.id,
-          membership_type: data.membershipType as
-            | 'senior'
-            | 'junior'
-            | 'social'
-            | 'life'
-            | 'volunteer',
+          membership_type: 'senior',
+          membership_type_id: data.membershipTypeId || null,
           membership_status: 'active',
           registration_date: data.registrationDate,
           expiry_date: data.expiryDate || null,
@@ -100,8 +96,8 @@ export default function NewMemberPage() {
         throw new Error(memberError?.message ?? 'Failed to create member');
       }
 
-      // Link guardians for junior members
-      if (data.membershipType === 'junior' && data.guardians && data.guardians.length > 0) {
+      // Link guardians for minor members
+      if (data.isMinor && data.guardians && data.guardians.length > 0) {
         for (const guardian of data.guardians) {
           const { error: linkError } = await linkGuardianToMinor({
             guardian_member_id: guardian.memberId,

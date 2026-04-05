@@ -82,6 +82,8 @@ export interface Organisation {
   instagram_url?: string | null;
   youtube_url?: string | null;
   tiktok_url?: string | null;
+  // State/Jurisdiction
+  state?: string | null;
   // Review
   details_reviewed_at?: string | null;
   created_at: string;
@@ -105,6 +107,22 @@ export interface MembershipFeeSchedule {
   membership_type: MembershipType;
   amount_cents: number;
   label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipTypeRecord {
+  id: string;
+  organisation_id: string;
+  name: string;
+  description: string | null;
+  fee_cents: number | null;
+  has_expiry: boolean;
+  default_duration_months: number | null;
+  auto_renewal: boolean;
+  grace_period_days: number;
+  is_active: boolean;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +153,7 @@ export interface Member {
   expiry_date: string | null;
   medical_conditions: string | null;
   dietary_requirements: string | null;
+  membership_type_id?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -142,6 +161,10 @@ export interface Member {
 
 export interface MemberWithProfile extends Member {
   profile: Profile;
+}
+
+export interface MemberWithProfileAndType extends MemberWithProfile {
+  membership_type_record: MembershipTypeRecord | null;
 }
 
 export interface Team {
@@ -567,6 +590,12 @@ export interface Database {
         Row: ActivityStanding & Record<string, unknown>;
         Insert: Omit<ActivityStanding, 'id'> & Record<string, unknown>;
         Update: Partial<Omit<ActivityStanding, 'id'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      membership_types: {
+        Row: MembershipTypeRecord & Record<string, unknown>;
+        Insert: Omit<MembershipTypeRecord, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<MembershipTypeRecord, 'id' | 'created_at'>> & Record<string, unknown>;
         Relationships: [];
       };
       club_venues: {

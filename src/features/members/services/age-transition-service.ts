@@ -1,27 +1,39 @@
 import { createClient } from '@/lib/supabase/client';
-import { calculateAge } from '@/lib/format';
+import { isMinor } from '@/lib/format';
 import { getGuardiansForMember } from './guardian-service';
 import type { MemberWithProfile } from '@/lib/supabase/database.types';
 
 export async function getAgedOutJuniors(orgId: string) {
   const supabase = createClient();
 
+  // Fetch all members with profiles
   const { data, error } = await supabase
     .from('members')
     .select('*, profile:profiles(*)')
-    .eq('organisation_id', orgId)
-    .eq('membership_type', 'junior');
+    .eq('organisation_id', orgId);
 
   if (error || !data) return { data: null, error };
 
-  const agedOut = (data as unknown as MemberWithProfile[]).filter(
-    (m) => m.profile.date_of_birth && calculateAge(m.profile.date_of_birth) >= 18
+  const members = data as unknown as MemberWithProfile[];
+
+  // Filter to members who are no longer minors but still have guardian links
+  const agedOutChecks = await Promise.all(
+    members
+      .filter((m) => m.profile.date_of_birth && !isMinor(m.profile.date_of_birth))
+      .map(async (m) => {
+        const { data: guardians } = await getGuardiansForMember(m.id);
+        return { member: m, hasGuardians: guardians != null && guardians.length > 0 };
+      })
   );
+
+  const agedOut = agedOutChecks
+    .filter((entry) => entry.hasGuardians)
+    .map((entry) => entry.member);
 
   return { data: agedOut, error: null };
 }
 
-export async function transitionToSenior(memberId: string) {
+export async function processAgeOut(memberId: string) {
   const supabase = createClient();
 
   // 1. Fetch member + profile
@@ -71,25 +83,16 @@ export async function transitionToSenior(memberId: string) {
       .eq('minor_member_id', memberId);
   }
 
-  // 5. Change membership type to senior
-  const { error: updateError } = await supabase
-    .from('members')
-    .update({
-      membership_type: 'senior',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', memberId);
-
-  return { error: updateError ?? null };
+  return { error: null };
 }
 
-export async function bulkTransitionToSenior(memberIds: string[]) {
+export async function bulkProcessAgeOut(memberIds: string[]) {
   let successes = 0;
   let failures = 0;
   const errors: string[] = [];
 
   for (const id of memberIds) {
-    const { error } = await transitionToSenior(id);
+    const { error } = await processAgeOut(id);
     if (error) {
       failures++;
       errors.push(error instanceof Error ? error.message : String(error));

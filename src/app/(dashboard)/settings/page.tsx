@@ -1,26 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Copy } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/page-header';
-import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { useUser } from '@/hooks/use-user';
-import { useOrganisation } from '@/hooks/use-organisation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { ModuleSettings } from '@/features/activities/components/module-settings';
-import { useEnabledModules } from '@/hooks/use-enabled-modules';
 
 export default function SettingsPage() {
   const { profile } = useUser();
-  const { organisation } = useOrganisation();
   const { toast } = useToast();
-  const isAdmin = profile?.role === 'admin';
-  const { modules, refetch: refetchModules } = useEnabledModules();
 
   // Profile settings state
   const [firstName, setFirstName] = useState('');
@@ -36,8 +29,6 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
-
-  const [deleteOrgOpen, setDeleteOrgOpen] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -96,86 +87,15 @@ export default function SettingsPage() {
     }
   };
 
-  const copyInviteCode = () => {
-    if (organisation?.slug) {
-      navigator.clipboard.writeText(organisation.slug);
-      toast({ title: 'Invite code copied!' });
-    }
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" />
 
-      <Tabs defaultValue={isAdmin ? 'general' : 'profile'}>
+      <Tabs defaultValue="profile">
         <TabsList>
-          {isAdmin && <TabsTrigger value="general">General</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="modules">Activity Types</TabsTrigger>}
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
         </TabsList>
-
-        {isAdmin && (
-          <TabsContent value="general" className="space-y-6">
-            <div className="max-w-2xl space-y-4 rounded-lg border p-6">
-              <h3 className="text-lg font-semibold">Invite Code</h3>
-              <p className="text-sm text-muted-foreground">
-                Share this code with members so they can join your club.
-              </p>
-              <div className="flex items-center gap-2">
-                <Input value={organisation?.slug || ''} readOnly className="font-mono" />
-                <Button variant="outline" size="icon" onClick={copyInviteCode}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="max-w-2xl rounded-lg border border-destructive/50 p-6">
-              <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Permanently delete this organisation and all its data.
-              </p>
-              <Button
-                variant="destructive"
-                className="mt-4"
-                onClick={() => setDeleteOrgOpen(true)}
-              >
-                Delete Organisation
-              </Button>
-            </div>
-
-            <ConfirmDialog
-              open={deleteOrgOpen}
-              onOpenChange={setDeleteOrgOpen}
-              title="Delete Organisation"
-              description="This will permanently delete all data including members, teams, fixtures, payments, and documents. This cannot be undone."
-              variant="destructive"
-              confirmLabel="Delete Everything"
-              onConfirm={async () => {
-                if (!organisation) return;
-                const supabase = createClient();
-                await supabase.from('organisations').delete().eq('id', organisation.id);
-                window.location.href = '/';
-              }}
-            />
-          </TabsContent>
-        )}
-
-        {isAdmin && organisation && (
-          <TabsContent value="modules" className="space-y-4">
-            <div className="max-w-3xl">
-              <h3 className="text-lg font-semibold mb-1">Activity Modules</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Enable or disable activity types for your club. Enabled modules appear in the sidebar navigation.
-              </p>
-              <ModuleSettings
-                orgId={organisation.id}
-                modules={modules}
-                onModuleChange={refetchModules}
-              />
-            </div>
-          </TabsContent>
-        )}
 
         <TabsContent value="profile" className="space-y-4">
           <div className="max-w-2xl space-y-4 rounded-lg border p-6">

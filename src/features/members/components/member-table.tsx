@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatDate, calculateAge } from '@/lib/format';
+import { formatDate, calculateAge, isMinor } from '@/lib/format';
 import type { MemberWithProfile, MembershipStatus } from '@/features/members/types/member-types';
 
 interface MemberTableProps {
@@ -25,13 +25,6 @@ interface MemberTableProps {
   onStatusChange: (id: string, status: MembershipStatus) => void;
 }
 
-const membershipTypeBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
-  senior: 'default',
-  junior: 'secondary',
-  social: 'outline',
-  life: 'default',
-  volunteer: 'secondary',
-};
 
 export function exportMembersCsv(members: MemberWithProfile[]): void {
   const headers = [
@@ -133,20 +126,20 @@ function createColumns(
         const dob = row.original.profile.date_of_birth;
         if (!dob) return <span className="text-muted-foreground">—</span>;
         const age = calculateAge(dob);
-        const isJuniorType = row.original.membership_type === 'junior';
+        const isMemberMinor = isMinor(dob);
         return (
           <div className="flex items-center gap-1.5">
             <span className="text-sm">{age}</span>
-            {isJuniorType && (
+            {isMemberMinor && (
               <Badge variant="outline" className="text-[10px] px-1 py-0">
                 Minor
               </Badge>
             )}
-            {isJuniorType && age >= 18 && (
+            {!isMemberMinor && age < 21 && (
               <Badge
                 variant="outline"
                 className="border-amber-400 bg-amber-50 text-amber-700 text-[10px] px-1 py-0 cursor-help"
-                title="Aged 18+ — transition to Senior recommended"
+                title="Aged 18+ — age-out processing may be needed"
               >
                 18+
               </Badge>
@@ -176,7 +169,7 @@ function createColumns(
       accessorKey: 'membership_type',
       header: 'Type',
       cell: ({ row }) => (
-        <Badge variant={membershipTypeBadgeVariant[row.original.membership_type] ?? 'outline'}>
+        <Badge variant="outline">
           {row.original.membership_type.charAt(0).toUpperCase() +
             row.original.membership_type.slice(1)}
         </Badge>

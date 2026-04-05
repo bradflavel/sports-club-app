@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { SPORT_TYPE_OPTIONS } from '@/lib/constants';
+import { SPORT_TYPE_OPTIONS, AU_STATE_OPTIONS } from '@/lib/constants';
 import { updateOrganisationDetails } from '@/features/club-profile/services/club-profile-service';
 import { createClient } from '@/lib/supabase/client';
 import type { Organisation, SportType } from '@/lib/supabase/database.types';
@@ -33,9 +33,11 @@ const TIMEZONE_OPTIONS = [
 interface ClubDetailsFormProps {
   organisation: Organisation;
   onSaved: () => void;
+  hideSaveButton?: boolean;
+  saveRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
-export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps) {
+export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef }: ClubDetailsFormProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -49,6 +51,7 @@ export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps)
   const [primaryColour, setPrimaryColour] = useState(organisation.primary_colour);
   const [secondaryColour, setSecondaryColour] = useState(organisation.secondary_colour);
   const [timezone, setTimezone] = useState(organisation.timezone ?? 'Australia/Sydney');
+  const [state, setState] = useState(organisation.state ?? '');
 
   useEffect(() => {
     setName(organisation.name);
@@ -59,6 +62,7 @@ export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps)
     setPrimaryColour(organisation.primary_colour);
     setSecondaryColour(organisation.secondary_colour);
     setTimezone(organisation.timezone ?? 'Australia/Sydney');
+    setState(organisation.state ?? '');
   }, [organisation]);
 
   async function handleLogoUpload(file: File) {
@@ -93,9 +97,11 @@ export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps)
     toast({ title: 'Logo uploaded' });
   }
 
-  function handleRemoveLogo() {
-    setLogoUrl('');
-  }
+  useEffect(() => {
+    if (saveRef) {
+      saveRef.current = handleSave;
+    }
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -109,6 +115,7 @@ export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps)
         primary_colour: primaryColour,
         secondary_colour: secondaryColour,
         timezone,
+        state: state || null,
       });
 
       if (error) {
@@ -127,49 +134,52 @@ export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps)
 
   return (
     <div className="space-y-6">
-      {/* Logo Upload */}
-      <div className="space-y-2">
-        <Label>Club Logo</Label>
-        <div className="flex items-center gap-4">
+      {/* Logo + Club Name + Sport */}
+      <div className="flex items-start gap-5">
+        {/* Logo */}
+        <div className="shrink-0">
           {logoUrl ? (
-            <div className="relative">
+            <div className="relative rounded-xl border bg-muted/30 p-2.5">
               <img
                 src={logoUrl}
                 alt="Club logo"
-                className="h-20 w-auto max-w-20 rounded-lg object-contain border"
+                className="h-20 w-auto max-w-20 rounded-lg object-contain"
               />
               <button
                 type="button"
-                onClick={handleRemoveLogo}
+                onClick={() => setLogoUrl('')}
                 className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
                 title="Remove logo"
               >
                 <X className="h-3 w-3" />
               </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="mt-1 block w-full text-center text-[11px] text-muted-foreground hover:text-primary"
+              >
+                {uploading ? 'Uploading...' : 'Change'}
+              </button>
             </div>
           ) : (
-            <div
-              className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground"
-            >
-              <Upload className="h-6 w-6" />
-            </div>
-          )}
-          <div>
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex h-[100px] w-[100px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+              title="Upload logo"
             >
               {uploading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</>
+                <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
-                <><Upload className="mr-2 h-4 w-4" /> {logoUrl ? 'Change Logo' : 'Upload Logo'}</>
+                <>
+                  <Upload className="h-6 w-6" />
+                  <span className="text-[10px]">Upload</span>
+                </>
               )}
-            </Button>
-            <p className="mt-1 text-xs text-muted-foreground">PNG, JPG or SVG. Max 2MB.</p>
-          </div>
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -182,95 +192,104 @@ export function ClubDetailsForm({ organisation, onSaved }: ClubDetailsFormProps)
             }}
           />
         </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="club-name">Club Name</Label>
-          <Input id="club-name" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="sport-type">Sport Type</Label>
-          <Select value={sportType} onValueChange={setSportType}>
-            <SelectTrigger id="sport-type"><SelectValue placeholder="Select sport" /></SelectTrigger>
-            <SelectContent>
-              {SPORT_TYPE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="abn">ABN</Label>
-          <Input id="abn" value={abn} onChange={(e) => setAbn(e.target.value)} placeholder="12 345 678 901" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="abn-entity-name">ABN Entity Name</Label>
-          <Input id="abn-entity-name" value={abnEntityName} onChange={(e) => setAbnEntityName(e.target.value)} placeholder="Registered business name" />
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="primary-colour">Primary Colour</Label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              id="primary-colour-picker"
-              value={primaryColour}
-              onChange={(e) => setPrimaryColour(e.target.value)}
-              className="h-9 w-9 cursor-pointer rounded border border-input p-0.5"
-            />
-            <Input
-              id="primary-colour"
-              value={primaryColour}
-              onChange={(e) => setPrimaryColour(e.target.value)}
-              placeholder="#000000"
-              className="font-mono"
-            />
+        {/* Club Name + Sport */}
+        <div className="flex-1 space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="club-name" className="text-xs">Club Name</Label>
+            <Input id="club-name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="secondary-colour">Secondary Colour</Label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              id="secondary-colour-picker"
-              value={secondaryColour}
-              onChange={(e) => setSecondaryColour(e.target.value)}
-              className="h-9 w-9 cursor-pointer rounded border border-input p-0.5"
-            />
-            <Input
-              id="secondary-colour"
-              value={secondaryColour}
-              onChange={(e) => setSecondaryColour(e.target.value)}
-              placeholder="#ffffff"
-              className="font-mono"
-            />
+          <div className="space-y-1.5">
+            <Label htmlFor="sport-type" className="text-xs">Sport</Label>
+            <Select value={sportType} onValueChange={setSportType}>
+              <SelectTrigger id="sport-type"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                {SPORT_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="timezone">Timezone</Label>
-        <Select value={timezone} onValueChange={setTimezone}>
-          <SelectTrigger id="timezone"><SelectValue placeholder="Select timezone" /></SelectTrigger>
-          <SelectContent>
-            {TIMEZONE_OPTIONS.map((tz) => (
-              <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Two-column: Left (Timezone, ABN, Entity) | Right (Colours) */}
+      <div className="grid gap-6 sm:grid-cols-2">
+        {/* Left column */}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="timezone" className="text-xs">Timezone</Label>
+            <Select value={timezone} onValueChange={setTimezone}>
+              <SelectTrigger id="timezone"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="state" className="text-xs">State</Label>
+            <Select value={state} onValueChange={setState}>
+              <SelectTrigger id="state"><SelectValue placeholder="Select state" /></SelectTrigger>
+              <SelectContent>
+                {AU_STATE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save
-        </Button>
+        {/* Right column */}
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Primary Colour</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={primaryColour}
+                  onChange={(e) => setPrimaryColour(e.target.value)}
+                  className="h-9 w-9 shrink-0 rounded border border-input p-0.5"
+                />
+                <Input
+                  value={primaryColour}
+                  onChange={(e) => setPrimaryColour(e.target.value)}
+                  placeholder="#000000"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Secondary Colour</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={secondaryColour}
+                  onChange={(e) => setSecondaryColour(e.target.value)}
+                  className="h-9 w-9 shrink-0 rounded border border-input p-0.5"
+                />
+                <Input
+                  value={secondaryColour}
+                  onChange={(e) => setSecondaryColour(e.target.value)}
+                  placeholder="#ffffff"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="abn" className="text-xs">ABN</Label>
+              <Input id="abn" value={abn} onChange={(e) => setAbn(e.target.value)} placeholder="12 345 678 901" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="abn-entity-name" className="text-xs">ABN Entity Name</Label>
+              <Input id="abn-entity-name" value={abnEntityName} onChange={(e) => setAbnEntityName(e.target.value)} placeholder="Registered business name" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -9,8 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { calculateAge } from '@/lib/format';
 import {
   getAgedOutJuniors,
-  transitionToSenior,
-  bulkTransitionToSenior,
+  processAgeOut,
+  bulkProcessAgeOut,
 } from '@/features/members/services/age-transition-service';
 import type { MemberWithProfile } from '@/lib/supabase/database.types';
 
@@ -22,8 +22,8 @@ export function AgeTransitionAlert({ orgId }: AgeTransitionAlertProps) {
   const { toast } = useToast();
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [transitioning, setTransitioning] = useState<string | null>(null);
-  const [bulkTransitioning, setBulkTransitioning] = useState(false);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   const fetchAgedOut = useCallback(async () => {
     const { data } = await getAgedOutJuniors(orgId);
@@ -35,32 +35,32 @@ export function AgeTransitionAlert({ orgId }: AgeTransitionAlertProps) {
     fetchAgedOut();
   }, [fetchAgedOut]);
 
-  async function handleTransition(memberId: string) {
-    setTransitioning(memberId);
-    const { error } = await transitionToSenior(memberId);
+  async function handleProcessAgeOut(memberId: string) {
+    setProcessing(memberId);
+    const { error } = await processAgeOut(memberId);
     if (error) {
       toast({ title: 'Error', description: String(error), variant: 'destructive' });
     } else {
-      toast({ title: 'Member transitioned to Senior' });
+      toast({ title: 'Age-out processed — guardians removed' });
       fetchAgedOut();
     }
-    setTransitioning(null);
+    setProcessing(null);
   }
 
-  async function handleBulkTransition() {
-    setBulkTransitioning(true);
+  async function handleBulkProcess() {
+    setBulkProcessing(true);
     const ids = members.map((m) => m.id);
-    const { successes, failures } = await bulkTransitionToSenior(ids);
+    const { successes, failures } = await bulkProcessAgeOut(ids);
     if (failures > 0) {
       toast({
-        title: `${successes} transitioned, ${failures} failed`,
+        title: `${successes} processed, ${failures} failed`,
         variant: 'destructive',
       });
     } else {
-      toast({ title: `${successes} member${successes !== 1 ? 's' : ''} transitioned to Senior` });
+      toast({ title: `${successes} member${successes !== 1 ? 's' : ''} age-out processed — guardians removed` });
     }
     fetchAgedOut();
-    setBulkTransitioning(false);
+    setBulkProcessing(false);
   }
 
   if (loading || members.length === 0) return null;
@@ -72,12 +72,13 @@ export function AgeTransitionAlert({ orgId }: AgeTransitionAlertProps) {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
           <div>
             <p className="font-semibold text-amber-800">
-              {members.length} junior member{members.length !== 1 ? 's' : ''} ha
-              {members.length !== 1 ? 've' : 's'} turned 18
+              {members.length} member{members.length !== 1 ? 's' : ''} ha
+              {members.length !== 1 ? 've' : 's'} turned 18 and still ha
+              {members.length !== 1 ? 've' : 's'} guardian links
             </p>
             <p className="mt-0.5 text-sm text-amber-700">
-              These members need to be transitioned to Senior membership. Guardian links will be
-              removed and emergency contacts will be updated.
+              Processing will remove guardian links and copy guardian contact details to emergency
+              contacts where needed.
             </p>
           </div>
         </div>
@@ -86,15 +87,15 @@ export function AgeTransitionAlert({ orgId }: AgeTransitionAlertProps) {
             size="sm"
             variant="outline"
             className="shrink-0 border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
-            onClick={handleBulkTransition}
-            disabled={bulkTransitioning}
+            onClick={handleBulkProcess}
+            disabled={bulkProcessing}
           >
-            {bulkTransitioning ? (
+            {bulkProcessing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <UserCheck className="mr-2 h-4 w-4" />
             )}
-            Transition All
+            Process All
           </Button>
         )}
       </div>
@@ -130,13 +131,13 @@ export function AgeTransitionAlert({ orgId }: AgeTransitionAlertProps) {
                   size="sm"
                   variant="outline"
                   className="h-7 border-amber-400 bg-white text-amber-800 hover:bg-amber-100"
-                  onClick={() => handleTransition(member.id)}
-                  disabled={transitioning === member.id}
+                  onClick={() => handleProcessAgeOut(member.id)}
+                  disabled={processing === member.id}
                 >
-                  {transitioning === member.id ? (
+                  {processing === member.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    'Transition'
+                    'Process'
                   )}
                 </Button>
               </div>

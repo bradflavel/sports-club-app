@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { isMinor } from '@/lib/format';
 import type {
   MemberGuardian,
   MemberGuardianWithDetails,
@@ -96,11 +97,18 @@ export async function searchAdultMembers(orgId: string, query: string) {
     .from('members')
     .select('*, profile:profiles(*)')
     .eq('organisation_id', orgId)
-    .neq('membership_type', 'junior')
     .or(
       `profile.first_name.ilike.%${query}%,profile.last_name.ilike.%${query}%,profile.email.ilike.%${query}%`
     )
-    .limit(10);
+    .limit(20);
 
-  return { data: data as unknown as MemberWithProfile[] | null, error };
+  if (error || !data) return { data: data as unknown as MemberWithProfile[] | null, error };
+
+  // Filter in JS: include members whose DOB indicates adult, or who have no DOB (assume adult)
+  const members = data as unknown as MemberWithProfile[];
+  const adults = members.filter(
+    (m) => !m.profile.date_of_birth || !isMinor(m.profile.date_of_birth)
+  );
+
+  return { data: adults.slice(0, 10), error: null };
 }
