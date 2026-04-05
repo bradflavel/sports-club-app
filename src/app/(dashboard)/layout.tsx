@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Sidebar } from '@/components/layouts/sidebar';
 import { TopBar } from '@/components/layouts/top-bar';
 import { MobileNav } from '@/components/layouts/mobile-nav';
@@ -13,14 +14,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        orgName={organisation?.name}
-        orgLogo={organisation?.logo_url}
-        userName={profile ? `${profile.first_name} ${profile.last_name}` : ''}
-        userAvatar={profile?.avatar_url}
-        userFirstName={profile?.first_name}
-        userLastName={profile?.last_name}
-      />
+      <Suspense>
+        <Sidebar
+          orgName={organisation?.name}
+          orgLogo={organisation?.logo_url}
+          userName={profile ? `${profile.first_name} ${profile.last_name}` : ''}
+          userAvatar={profile?.avatar_url}
+          userFirstName={profile?.first_name}
+          userLastName={profile?.last_name}
+        />
+      </Suspense>
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
           orgName={organisation?.name}
@@ -29,9 +32,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           userAvatar={profile?.avatar_url}
         />
         <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">
-          <ErrorBoundary>{children}</ErrorBoundary>
+          <Suspense>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </Suspense>
         </main>
-        <MobileNav />
+        <Suspense>
+          <MobileNav />
+        </Suspense>
       </div>
     </div>
   );
