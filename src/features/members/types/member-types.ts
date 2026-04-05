@@ -4,6 +4,9 @@ export type {
   MembershipType,
   MembershipStatus,
   Profile,
+  MemberGuardian,
+  MemberGuardianWithDetails,
+  GuardianRelationship,
 } from '@/lib/supabase/database.types';
 
 export interface MemberFilters {
@@ -27,6 +30,11 @@ export interface MemberFormData {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   notes?: string;
+  guardians?: Array<{
+    memberId: string;
+    relationship: string;
+    consentGiven: boolean;
+  }>;
 }
 
 export interface CsvImportRow {

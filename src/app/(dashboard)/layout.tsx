@@ -3,6 +3,7 @@
 import { Sidebar } from '@/components/layouts/sidebar';
 import { TopBar } from '@/components/layouts/top-bar';
 import { MobileNav } from '@/components/layouts/mobile-nav';
+import { ErrorBoundary } from '@/components/shared/error-boundary';
 import { useUser } from '@/hooks/use-user';
 import { useOrganisation } from '@/hooks/use-organisation';
 
@@ -27,7 +28,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           userLastName={profile?.last_name}
           userAvatar={profile?.avatar_url}
         />
-        <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </main>
         <MobileNav />
       </div>
     </div>

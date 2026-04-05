@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, CalendarDays, ArrowRight } from 'lucide-react';
+import { Shield, CalendarDays, ArrowRight, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UpcomingFixturesWidget } from './upcoming-fixtures-widget';
+import { UpcomingEventsWidget } from './upcoming-fixtures-widget';
 import { RecentAnnouncementsWidget } from './recent-announcements-widget';
 import { MemberStatsWidget } from './member-stats-widget';
 import { createClient } from '@/lib/supabase/client';
+import { calculateAge } from '@/lib/format';
 import type {
   Profile,
-  FixtureWithTeam,
+  ActivityEventWithTeams,
   Payment,
   AnnouncementWithAuthor,
+  MemberWithProfile,
+  MemberGuardian,
 } from '@/lib/supabase/database.types';
 
 interface MemberDashboardProps {
@@ -25,15 +28,25 @@ interface TeamSummary {
   id: string;
   name: string;
   division: string | null;
+  activityName?: string;
+}
+
+interface DependentInfo {
+  id: string;
+  name: string;
+  age: number | null;
+  relationship: string;
+  outstandingPayments: number;
 }
 
 export function MemberDashboard({ profile }: MemberDashboardProps) {
   const router = useRouter();
 
   const [teams, setTeams] = useState<TeamSummary[]>([]);
-  const [fixtures, setFixtures] = useState<FixtureWithTeam[]>([]);
+  const [events, setEvents] = useState<ActivityEventWithTeams[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementWithAuthor[]>([]);
+  const [dependents, setDependents] = useState<DependentInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,30 +75,33 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
 
       const memberId = memberRecord.id;
 
-      // Get team memberships
-      const { data: teamMemberships } = await supabase
-        .from('team_members')
-        .select('team_id')
+      // Get activity team memberships
+      const { data: activityTeamMemberships } = await supabase
+        .from('activity_team_members')
+        .select('activity_team_id')
         .eq('member_id', memberId);
 
-      const teamIds = (teamMemberships ?? []).map((tm) => tm.team_id);
+      const activityTeamIds = (activityTeamMemberships ?? []).map((tm) => tm.activity_team_id);
 
       const [
         { data: teamRows },
-        { data: fixtureRows },
+        { data: eventRows },
         { data: paymentRows },
         { data: announcementRows },
       ] = await Promise.all([
-        teamIds.length > 0
-          ? supabase.from('teams').select('id, name, division').in('id', teamIds)
+        activityTeamIds.length > 0
+          ? supabase
+              .from('activity_teams')
+              .select('id, name, division, activity:activities(name)')
+              .in('id', activityTeamIds)
           : Promise.resolve({ data: [] }),
 
-        teamIds.length > 0
+        activityTeamIds.length > 0
           ? supabase
-              .from('fixtures')
-              .select('*, team:teams(*)')
+              .from('activity_events')
+              .select('*, home_team:activity_teams!activity_events_home_team_id_fkey(*), away_team:activity_teams!activity_events_away_team_id_fkey(*), activity:activities(*)')
               .eq('organisation_id', orgId)
-              .in('team_id', teamIds)
+              .or(activityTeamIds.map((id) => `home_team_id.eq.${id}`).join(',') + ',' + activityTeamIds.map((id) => `away_team_id.eq.${id}`).join(','))
               .eq('status', 'scheduled')
               .gte('date_time', new Date().toISOString())
               .order('date_time', { ascending: true })
@@ -107,10 +123,51 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
           .limit(3),
       ]);
 
-      setTeams((teamRows ?? []) as TeamSummary[]);
-      setFixtures((fixtureRows ?? []) as unknown as FixtureWithTeam[]);
+      const mappedTeams: TeamSummary[] = (teamRows ?? []).map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        name: row.name as string,
+        division: row.division as string | null,
+        activityName: (row.activity as { name: string } | null)?.name ?? undefined,
+      }));
+
+      setTeams(mappedTeams);
+      setEvents((eventRows ?? []) as unknown as ActivityEventWithTeams[]);
       setPayments((paymentRows ?? []) as Payment[]);
       setAnnouncements((announcementRows ?? []) as unknown as AnnouncementWithAuthor[]);
+
+      // Check if user is a guardian and fetch dependents
+      const { data: guardianLinks } = await supabase
+        .from('member_guardians')
+        .select('*, minor:members!minor_member_id(*, profile:profiles(*))')
+        .eq('guardian_member_id', memberId);
+
+      if (guardianLinks && guardianLinks.length > 0) {
+        const depInfos: DependentInfo[] = [];
+        for (const link of guardianLinks) {
+          const minor = (link as unknown as { minor: MemberWithProfile }).minor;
+          // Get outstanding payments for this dependent
+          const { data: depPayments } = await supabase
+            .from('payments')
+            .select('amount_cents')
+            .eq('member_id', minor.id)
+            .in('status', ['pending', 'overdue']);
+
+          const outstanding = (depPayments ?? []).reduce(
+            (sum: number, p: { amount_cents: number }) => sum + p.amount_cents,
+            0
+          );
+
+          depInfos.push({
+            id: minor.id,
+            name: `${minor.profile.first_name} ${minor.profile.last_name}`,
+            age: minor.profile.date_of_birth ? calculateAge(minor.profile.date_of_birth) : null,
+            relationship: (link as unknown as MemberGuardian).relationship.replace(/_/g, ' '),
+            outstandingPayments: outstanding,
+          });
+        }
+        setDependents(depInfos);
+      }
+
       setLoading(false);
     }
 
@@ -127,6 +184,46 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
         <p className="mt-1 text-muted-foreground">Here&apos;s what&apos;s happening with your club.</p>
       </div>
 
+      {/* My Dependents (guardians only) */}
+      {!loading && dependents.length > 0 && (
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              My Dependents
+            </h3>
+          </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            {dependents.map((dep) => (
+              <button
+                key={dep.id}
+                onClick={() => router.push(`/members/${dep.id}`)}
+                className="group flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary/50 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
+                  {dep.name.split(' ').map((n) => n[0]).join('')}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{dep.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {dep.age !== null ? `${dep.age} yrs` : 'Age unknown'} · {dep.relationship}
+                  </p>
+                  {dep.outstandingPayments > 0 && (
+                    <p className="mt-1 text-xs font-medium text-amber-600">
+                      {new Intl.NumberFormat('en-AU', {
+                        style: 'currency',
+                        currency: 'AUD',
+                      }).format(dep.outstandingPayments / 100)}{' '}
+                      outstanding
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Payment stats */}
       <MemberStatsWidget payments={payments} loading={loading} />
 
@@ -135,7 +232,7 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h3 className="font-semibold">My Teams</h3>
           <Link
-            href="/teams"
+            href="/activities"
             className="flex items-center gap-1 text-xs text-primary hover:underline"
           >
             View all <ArrowRight className="h-3 w-3" />
@@ -160,10 +257,9 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {teams.map((team) => (
-                <button
+                <div
                   key={team.id}
-                  onClick={() => router.push(`/teams/${team.id}`)}
-                  className="group flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary/50 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="group flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary/50 hover:bg-muted/30"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Shield className="h-4 w-4" />
@@ -173,17 +269,20 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
                     {team.division && (
                       <p className="text-xs text-muted-foreground">{team.division}</p>
                     )}
+                    {team.activityName && (
+                      <p className="text-xs text-muted-foreground">{team.activityName}</p>
+                    )}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* Upcoming games + announcements */}
+      {/* Upcoming events + announcements */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <UpcomingFixturesWidget fixtures={fixtures} loading={loading} />
+        <UpcomingEventsWidget events={events} loading={loading} />
 
         {/* Latest News */}
         <RecentAnnouncementsWidget announcements={announcements} loading={loading} />

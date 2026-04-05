@@ -2,7 +2,24 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Calendar, DollarSign, MoreHorizontal } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  Calendar,
+  DollarSign,
+  MoreHorizontal,
+  Shield,
+  FileText,
+  Camera,
+  Megaphone,
+  Settings,
+  Trophy,
+  Award,
+  Dumbbell,
+  Tent,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import {
@@ -12,26 +29,60 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { Shield, FileText, Camera, Megaphone, Settings } from 'lucide-react';
+import { useEnabledModules } from '@/hooks/use-enabled-modules';
+import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
+import type { ActivityType } from '@/lib/supabase/database.types';
 
-const mainItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/members', label: 'Members', icon: Users },
-  { href: '/fixtures', label: 'Fixtures', icon: Calendar },
-  { href: '/payments', label: 'Payments', icon: DollarSign },
-];
-
-const moreItems = [
-  { href: '/teams', label: 'Teams', icon: Shield },
-  { href: '/documents', label: 'Documents', icon: FileText },
-  { href: '/photos', label: 'Photos', icon: Camera },
-  { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+const MODULE_ICON_MAP: Record<string, LucideIcon> = {
+  Trophy,
+  Award,
+  Dumbbell,
+  Tent,
+};
 
 export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { enabledModules } = useEnabledModules();
+
+  // Build dynamic module nav items
+  const moduleNavItems = enabledModules.map((mod) => {
+    const config = ACTIVITY_TYPE_CONFIG[mod.activity_type as ActivityType];
+    return {
+      href: config.navHref,
+      label: config.label,
+      icon: MODULE_ICON_MAP[config.icon] ?? Calendar,
+    };
+  });
+
+  // Legacy items shown when no modules enabled
+  const legacyMainItems = [
+    { href: '/fixtures', label: 'Fixtures', icon: Calendar },
+  ];
+  const legacyMoreItems = [
+    { href: '/teams', label: 'Teams', icon: Shield },
+  ];
+
+  // First module goes in main bar, rest in "more"
+  const firstModule = moduleNavItems[0];
+  const restModules = moduleNavItems.slice(1);
+
+  const mainItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/members', label: 'Members', icon: Users },
+    ...(firstModule ? [firstModule] : legacyMainItems),
+    { href: '/payments', label: 'Payments', icon: DollarSign },
+  ];
+
+  const moreItems = [
+    { href: '/club', label: 'Club', icon: Building2 },
+    ...restModules,
+    ...(moduleNavItems.length === 0 ? legacyMoreItems : []),
+    { href: '/documents', label: 'Documents', icon: FileText },
+    { href: '/photos', label: 'Photos', icon: Camera },
+    { href: '/announcements', label: 'Announcements', icon: Megaphone },
+    { href: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background lg:hidden">

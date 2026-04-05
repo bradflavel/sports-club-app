@@ -11,7 +11,9 @@ import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
+import { linkGuardianToMinor } from '@/features/members/services/guardian-service';
 import type { MemberInput } from '@/features/members/schemas/member-schemas';
+import type { GuardianRelationship } from '@/lib/supabase/database.types';
 
 export default function NewMemberPage() {
   const router = useRouter();
@@ -73,20 +75,50 @@ export default function NewMemberPage() {
       }
 
       // Create member record
-      const { error: memberError } = await supabase.from('members').insert({
-        profile_id: profileId,
-        organisation_id: organisation.id,
-        membership_type: data.membershipType as 'senior' | 'junior' | 'social' | 'life' | 'volunteer',
-        membership_status: 'active',
-        registration_date: data.registrationDate,
-        expiry_date: data.expiryDate || null,
-        medical_conditions: data.medicalConditions || null,
-        dietary_requirements: data.dietaryRequirements || null,
-        notes: data.notes || null,
-      });
+      const { data: memberRecord, error: memberError } = await supabase
+        .from('members')
+        .insert({
+          profile_id: profileId,
+          organisation_id: organisation.id,
+          membership_type: data.membershipType as
+            | 'senior'
+            | 'junior'
+            | 'social'
+            | 'life'
+            | 'volunteer',
+          membership_status: 'active',
+          registration_date: data.registrationDate,
+          expiry_date: data.expiryDate || null,
+          medical_conditions: data.medicalConditions || null,
+          dietary_requirements: data.dietaryRequirements || null,
+          notes: data.notes || null,
+        })
+        .select('id')
+        .single();
 
-      if (memberError) {
-        throw new Error(memberError.message);
+      if (memberError || !memberRecord) {
+        throw new Error(memberError?.message ?? 'Failed to create member');
+      }
+
+      // Link guardians for junior members
+      if (data.membershipType === 'junior' && data.guardians && data.guardians.length > 0) {
+        for (const guardian of data.guardians) {
+          const { error: linkError } = await linkGuardianToMinor({
+            guardian_member_id: guardian.memberId,
+            minor_member_id: memberRecord.id,
+            relationship: guardian.relationship as GuardianRelationship,
+            is_primary: data.guardians.indexOf(guardian) === 0,
+            parental_consent_given: guardian.consentGiven,
+          });
+
+          if (linkError) {
+            toast({
+              title: 'Warning',
+              description: `Member created but failed to link guardian: ${linkError.message}`,
+              variant: 'destructive',
+            });
+          }
+        }
       }
 
       toast({ title: 'Member added successfully' });
@@ -117,7 +149,7 @@ export default function NewMemberPage() {
       />
 
       <div className="mx-auto max-w-3xl">
-        <MemberForm onSubmit={handleSubmit} loading={loading} />
+        <MemberForm onSubmit={handleSubmit} loading={loading} orgId={organisation?.id} />
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatDate } from '@/lib/format';
+import { formatDate, calculateAge } from '@/lib/format';
 import type { MemberWithProfile, MembershipStatus } from '@/features/members/types/member-types';
 
 interface MemberTableProps {
@@ -124,6 +124,36 @@ function createColumns(
         </Link>
       ),
       enableSorting: true,
+    },
+    {
+      id: 'age',
+      accessorFn: (row) => row.profile.date_of_birth,
+      header: 'Age',
+      cell: ({ row }) => {
+        const dob = row.original.profile.date_of_birth;
+        if (!dob) return <span className="text-muted-foreground">—</span>;
+        const age = calculateAge(dob);
+        const isJuniorType = row.original.membership_type === 'junior';
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">{age}</span>
+            {isJuniorType && (
+              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                Minor
+              </Badge>
+            )}
+            {isJuniorType && age >= 18 && (
+              <Badge
+                variant="outline"
+                className="border-amber-400 bg-amber-50 text-amber-700 text-[10px] px-1 py-0 cursor-help"
+                title="Aged 18+ — transition to Senior recommended"
+              >
+                18+
+              </Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: 'email',

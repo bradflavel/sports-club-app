@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow, isBefore, differenceInDays } from 'date-fns';
+import { format, formatDistanceToNow, isBefore, differenceInDays, differenceInYears } from 'date-fns';
 
 export function formatCurrency(amountCents: number): string {
   const dollars = amountCents / 100;
@@ -39,6 +39,19 @@ export function daysUntil(date: string | Date): number {
 export function daysOverdue(dueDate: string | Date): number {
   if (!isOverdue(dueDate)) return 0;
   return differenceInDays(new Date(), new Date(dueDate));
+}
+
+export function calculateAge(dateOfBirth: string | Date): number {
+  return differenceInYears(new Date(), new Date(dateOfBirth));
+}
+
+export function isMinor(dateOfBirth: string | Date): boolean {
+  return calculateAge(dateOfBirth) < 18;
+}
+
+export function formatAge(dateOfBirth: string | Date): string {
+  const age = calculateAge(dateOfBirth);
+  return `${age} yr${age !== 1 ? 's' : ''}`;
 }
 
 export function formatFileSize(bytes: number): string {

@@ -8,20 +8,22 @@ import {
   CalendarDays,
   CreditCard,
   Plus,
-  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/shared/stat-card';
-import { UpcomingFixturesWidget } from './upcoming-fixtures-widget';
+import { UpcomingEventsWidget } from './upcoming-fixtures-widget';
 import { OutstandingPaymentsWidget } from './outstanding-payments-widget';
 import { RecentAnnouncementsWidget } from './recent-announcements-widget';
 import { createClient } from '@/lib/supabase/client';
-import type { FixtureWithTeam, PaymentWithMember, AnnouncementWithAuthor } from '@/lib/supabase/database.types';
+import { AgeTransitionAlert } from '@/features/members/components/age-transition-alert';
+import { ClubReviewReminder } from '@/features/club-profile/components/club-review-reminder';
+import { useOrganisation } from '@/hooks/use-organisation';
+import type { ActivityEventWithTeams, PaymentWithMember, AnnouncementWithAuthor } from '@/lib/supabase/database.types';
 
 interface AdminDashboardStats {
   memberCount: number;
   teamCount: number;
-  upcomingFixtureCount: number;
+  upcomingEventCount: number;
   outstandingPaymentsTotal: number;
 }
 
@@ -31,9 +33,10 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ orgId }: AdminDashboardProps) {
   const router = useRouter();
+  const { organisation } = useOrganisation();
 
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
-  const [fixtures, setFixtures] = useState<FixtureWithTeam[]>([]);
+  const [events, setEvents] = useState<ActivityEventWithTeams[]>([]);
   const [payments, setPayments] = useState<PaymentWithMember[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,9 +51,9 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
       const [
         { count: memberCount },
         { count: teamCount },
-        { count: fixtureCount },
+        { count: eventCount },
         { data: paymentRows },
-        { data: fixtureRows },
+        { data: eventRows },
         { data: announcementRows },
       ] = await Promise.all([
         supabase
@@ -60,12 +63,12 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
           .eq('membership_status', 'active'),
 
         supabase
-          .from('teams')
+          .from('activity_teams')
           .select('*', { count: 'exact', head: true })
           .eq('organisation_id', orgId),
 
         supabase
-          .from('fixtures')
+          .from('activity_events')
           .select('*', { count: 'exact', head: true })
           .eq('organisation_id', orgId)
           .eq('status', 'scheduled')
@@ -80,8 +83,8 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
           .limit(5),
 
         supabase
-          .from('fixtures')
-          .select('*, team:teams(*)')
+          .from('activity_events')
+          .select('*, home_team:activity_teams!activity_events_home_team_id_fkey(*), away_team:activity_teams!activity_events_away_team_id_fkey(*), activity:activities(*)')
           .eq('organisation_id', orgId)
           .eq('status', 'scheduled')
           .gte('date_time', new Date().toISOString())
@@ -106,10 +109,10 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
       setStats({
         memberCount: memberCount ?? 0,
         teamCount: teamCount ?? 0,
-        upcomingFixtureCount: fixtureCount ?? 0,
+        upcomingEventCount: eventCount ?? 0,
         outstandingPaymentsTotal,
       });
-      setFixtures((fixtureRows ?? []) as unknown as FixtureWithTeam[]);
+      setEvents((eventRows ?? []) as unknown as ActivityEventWithTeams[]);
       setPayments((paymentRows ?? []) as unknown as PaymentWithMember[]);
       setAnnouncements((announcementRows ?? []) as unknown as AnnouncementWithAuthor[]);
       setLoading(false);
@@ -136,9 +139,9 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
             <Plus className="mr-1.5 h-4 w-4" />
             Add Member
           </Button>
-          <Button size="sm" variant="outline" onClick={() => router.push('/fixtures?action=create')}>
+          <Button size="sm" variant="outline" onClick={() => router.push('/activities')}>
             <Plus className="mr-1.5 h-4 w-4" />
-            Create Fixture
+            Create Event
           </Button>
           <Button
             size="sm"
@@ -173,8 +176,8 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
             icon={Shield}
           />
           <StatCard
-            title="Upcoming Fixtures"
-            value={stats?.upcomingFixtureCount ?? 0}
+            title="Upcoming Events"
+            value={stats?.upcomingEventCount ?? 0}
             subtitle="scheduled ahead"
             icon={CalendarDays}
           />
@@ -187,9 +190,15 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
         </div>
       )}
 
+      {/* Age transition alert */}
+      <AgeTransitionAlert orgId={orgId} />
+
+      {/* Club review reminder */}
+      {organisation && <ClubReviewReminder organisation={organisation} />}
+
       {/* Widgets */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <UpcomingFixturesWidget fixtures={fixtures} loading={loading} />
+        <UpcomingEventsWidget events={events} loading={loading} />
         <OutstandingPaymentsWidget payments={payments} loading={loading} />
       </div>
 

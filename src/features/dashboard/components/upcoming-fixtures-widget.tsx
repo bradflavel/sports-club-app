@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import { MapPin, Calendar, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { FixtureWithTeam } from '@/lib/supabase/database.types';
+import type { ActivityEventWithTeams } from '@/lib/supabase/database.types';
+import type { SportType } from '@/lib/constants';
+import { SPORT_CONFIGS } from '@/lib/constants';
 
-interface UpcomingFixturesWidgetProps {
-  fixtures: FixtureWithTeam[];
+interface UpcomingEventsWidgetProps {
+  events: ActivityEventWithTeams[];
   loading?: boolean;
+  sportType?: SportType;
 }
 
 function formatDateTime(iso: string): string {
@@ -22,13 +25,35 @@ function formatDateTime(iso: string): string {
   });
 }
 
-export function UpcomingFixturesWidget({ fixtures, loading = false }: UpcomingFixturesWidgetProps) {
+function getEventDisplayName(event: ActivityEventWithTeams): string {
+  if (event.home_team && event.away_team) {
+    return `${event.home_team.name} vs ${event.away_team.name}`;
+  }
+  if (event.home_team && event.opponent_name) {
+    return `${event.home_team.name} vs ${event.opponent_name}`;
+  }
+  if (event.title) {
+    return event.title;
+  }
+  if (event.home_team) {
+    return event.home_team.name;
+  }
+  return 'Event';
+}
+
+/** @deprecated Use UpcomingEventsWidget instead */
+export const UpcomingFixturesWidget = UpcomingEventsWidget;
+
+export function UpcomingEventsWidget({ events, loading = false, sportType }: UpcomingEventsWidgetProps) {
+  const matchLabel = sportType ? SPORT_CONFIGS[sportType].matchLabel : 'Event';
+  const heading = `Upcoming ${matchLabel}s`;
+
   return (
     <div className="rounded-lg border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <h3 className="font-semibold">Upcoming Fixtures</h3>
+        <h3 className="font-semibold">{heading}</h3>
         <Link
-          href="/fixtures"
+          href="/activities"
           className="flex items-center gap-1 text-xs text-primary hover:underline"
         >
           View all <ArrowRight className="h-3 w-3" />
@@ -44,39 +69,44 @@ export function UpcomingFixturesWidget({ fixtures, loading = false }: UpcomingFi
               <Skeleton className="h-3 w-1/3" />
             </div>
           ))
-        ) : fixtures.length === 0 ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">No upcoming fixtures.</p>
+        ) : events.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">No upcoming events.</p>
         ) : (
-          fixtures.slice(0, 5).map((fixture) => (
-            <div key={fixture.id} className="p-4">
+          events.slice(0, 5).map((event) => (
+            <div key={event.id} className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-sm">
-                    {fixture.team.name}{' '}
-                    <span className="text-muted-foreground font-normal">vs</span>{' '}
-                    {fixture.opponent_name}
+                    {getEventDisplayName(event)}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {formatDateTime(fixture.date_time)}
+                      {formatDateTime(event.date_time)}
                     </span>
-                    {fixture.venue && (
+                    {event.venue && (
                       <span className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
-                        {fixture.venue}
+                        {event.venue}
                       </span>
                     )}
                   </div>
                 </div>
+                {event.is_home != null && (
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      event.is_home
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-sky-100 text-sky-700'
+                    }`}
+                  >
+                    {event.is_home ? 'Home' : 'Away'}
+                  </span>
+                )}
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                    fixture.is_home
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-sky-100 text-sky-700'
-                  }`}
+                  className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground capitalize"
                 >
-                  {fixture.is_home ? 'Home' : 'Away'}
+                  {event.status.replace(/_/g, ' ')}
                 </span>
               </div>
             </div>

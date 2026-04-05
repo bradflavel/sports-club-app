@@ -1,37 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Copy, RefreshCw } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { useUser } from '@/hooks/use-user';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { SPORT_TYPE_OPTIONS } from '@/lib/constants';
+import { ModuleSettings } from '@/features/activities/components/module-settings';
+import { useEnabledModules } from '@/hooks/use-enabled-modules';
 
 export default function SettingsPage() {
   const { profile } = useUser();
   const { organisation } = useOrganisation();
   const { toast } = useToast();
   const isAdmin = profile?.role === 'admin';
-
-  // Org settings state
-  const [orgName, setOrgName] = useState('');
-  const [sportType, setSportType] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [website, setWebsite] = useState('');
-  const [primaryColour, setPrimaryColour] = useState('#1e40af');
-  const [secondaryColour, setSecondaryColour] = useState('#ffffff');
-  const [orgLoading, setOrgLoading] = useState(false);
+  const { modules, refetch: refetchModules } = useEnabledModules();
 
   // Profile settings state
   const [firstName, setFirstName] = useState('');
@@ -51,19 +40,6 @@ export default function SettingsPage() {
   const [deleteOrgOpen, setDeleteOrgOpen] = useState(false);
 
   useEffect(() => {
-    if (organisation) {
-      setOrgName(organisation.name);
-      setSportType(organisation.sport_type);
-      setContactEmail(organisation.contact_email || '');
-      setContactPhone(organisation.contact_phone || '');
-      setAddress(organisation.address || '');
-      setWebsite(organisation.website || '');
-      setPrimaryColour(organisation.primary_colour);
-      setSecondaryColour(organisation.secondary_colour);
-    }
-  }, [organisation]);
-
-  useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name);
       setLastName(profile.last_name);
@@ -74,31 +50,6 @@ export default function SettingsPage() {
       setEmergencyPhone(profile.emergency_contact_phone || '');
     }
   }, [profile]);
-
-  const handleSaveOrg = async () => {
-    if (!organisation) return;
-    setOrgLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('organisations')
-      .update({
-        name: orgName,
-        sport_type: sportType as never,
-        contact_email: contactEmail || null,
-        contact_phone: contactPhone || null,
-        address: address || null,
-        website: website || null,
-        primary_colour: primaryColour,
-        secondary_colour: secondaryColour,
-      })
-      .eq('id', organisation.id);
-    setOrgLoading(false);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Organisation settings saved' });
-    }
-  };
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -156,70 +107,16 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <PageHeader title="Settings" />
 
-      <Tabs defaultValue={isAdmin ? 'organisation' : 'profile'}>
+      <Tabs defaultValue={isAdmin ? 'general' : 'profile'}>
         <TabsList>
-          {isAdmin && <TabsTrigger value="organisation">Organisation</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="general">General</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="modules">Activity Types</TabsTrigger>}
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
         </TabsList>
 
         {isAdmin && (
-          <TabsContent value="organisation" className="space-y-6">
-            <div className="max-w-2xl space-y-4 rounded-lg border p-6">
-              <h3 className="text-lg font-semibold">Club Settings</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Club Name</Label>
-                  <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Sport Type</Label>
-                  <Select value={sportType} onValueChange={setSportType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SPORT_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Contact Email</Label>
-                  <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Contact Phone</Label>
-                  <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Address</Label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Website</Label>
-                  <Input value={website} onChange={(e) => setWebsite(e.target.value)} />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Primary Colour</Label>
-                  <Input value={primaryColour} onChange={(e) => setPrimaryColour(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Secondary Colour</Label>
-                  <Input value={secondaryColour} onChange={(e) => setSecondaryColour(e.target.value)} />
-                </div>
-              </div>
-              <Button onClick={handleSaveOrg} disabled={orgLoading}>
-                {orgLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </div>
-
+          <TabsContent value="general" className="space-y-6">
             <div className="max-w-2xl space-y-4 rounded-lg border p-6">
               <h3 className="text-lg font-semibold">Invite Code</h3>
               <p className="text-sm text-muted-foreground">
@@ -261,6 +158,22 @@ export default function SettingsPage() {
                 window.location.href = '/';
               }}
             />
+          </TabsContent>
+        )}
+
+        {isAdmin && organisation && (
+          <TabsContent value="modules" className="space-y-4">
+            <div className="max-w-3xl">
+              <h3 className="text-lg font-semibold mb-1">Activity Modules</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Enable or disable activity types for your club. Enabled modules appear in the sidebar navigation.
+              </p>
+              <ModuleSettings
+                orgId={organisation.id}
+                modules={modules}
+                onModuleChange={refetchModules}
+              />
+            </div>
           </TabsContent>
         )}
 
