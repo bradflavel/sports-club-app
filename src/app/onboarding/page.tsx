@@ -205,11 +205,13 @@ function StepCreateClub({
       // Create default membership types for the new org
       await createDefaultTypes(org.id);
 
-      // Set profile as admin
+      // Set profile as admin via trusted RPC
       const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ organisation_id: org.id, role: 'admin', updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+        .rpc('assign_user_to_organisation', {
+          p_user_id: user.id,
+          p_org_id: org.id,
+          p_role: 'admin',
+        });
 
       if (profileError) {
         toast({ title: 'Error', description: profileError.message, variant: 'destructive' });
@@ -388,13 +390,11 @@ function StepJoinClub({
       }
 
       const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          organisation_id: found.id,
-          role: 'member',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        .rpc('assign_user_to_organisation', {
+          p_user_id: user.id,
+          p_org_id: found.id,
+          p_role: 'member',
+        });
 
       if (profileError) {
         toast({ title: 'Error', description: profileError.message, variant: 'destructive' });
