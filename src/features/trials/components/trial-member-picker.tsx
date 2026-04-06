@@ -34,7 +34,7 @@ export function TrialMemberPicker({ activityId, orgId, division }: TrialMemberPi
   const fetchRoster = useCallback(async () => {
     const supabase = createClient();
 
-    let { data: teams } = await supabase
+    const { data: teams } = await supabase
       .from('activity_teams')
       .select('id')
       .eq('activity_id', activityId)
