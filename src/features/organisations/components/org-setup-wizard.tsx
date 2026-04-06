@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { createOrganisationClient } from '@/features/organisations/services/org-client-service';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { generateSlug } from '@/lib/utils';
@@ -66,8 +67,8 @@ export function OrgSetupWizard({ onComplete }: OrgSetupWizardProps) {
   const onSubmit = async (data: CreateClubFormValues) => {
     setLoading(true);
     try {
+      // supabase.auth.getUser() is an auth call — acceptable to keep in component
       const supabase = createClient();
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -79,10 +80,8 @@ export function OrgSetupWizard({ onComplete }: OrgSetupWizardProps) {
 
       const slug = generateSlug(data.name);
 
-      // Create the organisation
-      const { data: org, error: orgError } = await supabase
-        .from('organisations')
-        .insert({
+      const { data: org, error } = await createOrganisationClient(
+        {
           name: data.name,
           slug,
           sport_type: data.sportType as SportType,
@@ -93,54 +92,17 @@ export function OrgSetupWizard({ onComplete }: OrgSetupWizardProps) {
           logo_url: null,
           address: null,
           website: null,
-        })
-        .select()
-        .single();
+        },
+        user.id
+      );
 
-      if (orgError) {
+      if (error || !org) {
         toast({
           title: 'Error creating club',
-          description: orgError.message,
+          description: (error as Error)?.message ?? 'Unknown error',
           variant: 'destructive',
         });
         return;
-      }
-
-      // Update profile to set organisation_id and role
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          organisation_id: org.id,
-          role: 'admin',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (profileError) {
-        toast({
-          title: 'Error updating profile',
-          description: profileError.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Create member record for the admin
-      const { error: memberError } = await supabase.from('members').insert({
-        profile_id: user.id,
-        organisation_id: org.id,
-        membership_type: 'senior',
-        membership_status: 'active',
-        registration_date: new Date().toISOString().split('T')[0],
-        expiry_date: null,
-        medical_conditions: null,
-        dietary_requirements: null,
-        notes: null,
-      });
-
-      if (memberError) {
-        // Non-fatal: org and profile are already set up
-        console.warn('Could not create member record:', memberError.message);
       }
 
       toast({ title: 'Club created!', description: `${data.name} has been created successfully.` });

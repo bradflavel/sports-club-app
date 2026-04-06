@@ -15,8 +15,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { SPORT_TYPE_OPTIONS, AU_STATE_OPTIONS } from '@/lib/constants';
-import { updateOrganisationDetails } from '@/features/club-profile/services/club-profile-service';
-import { createClient } from '@/lib/supabase/client';
+import {
+  updateOrganisationDetails,
+  uploadLogoClient,
+} from '@/features/club-profile/services/club-profile-service';
 import { generateSlug, isValidSlug } from '@/lib/utils';
 import type { Organisation, SportType } from '@/lib/supabase/database.types';
 
@@ -82,13 +84,7 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
     }
 
     setUploading(true);
-    const supabase = createClient();
-    const ext = file.name.split('.').pop() ?? 'png';
-    const path = `logos/${organisation.id}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('logos')
-      .upload(path, file, { upsert: true });
+    const { publicUrl, error: uploadError } = await uploadLogoClient(organisation.id, file);
 
     if (uploadError) {
       toast({ title: 'Upload failed', description: uploadError.message, variant: 'destructive' });
@@ -96,9 +92,7 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
       return;
     }
 
-    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
-    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-    setLogoUrl(publicUrl);
+    setLogoUrl(publicUrl ?? '');
     setUploading(false);
     toast({ title: 'Logo uploaded' });
   }

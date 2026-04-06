@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CreditCard, Activity, Calendar, Users } from 'lucide-react';
 import { StatCard } from '@/components/shared/stat-card';
 import { Skeleton } from '@/components/shared/loading-skeleton';
-import { createClient } from '@/lib/supabase/client';
+import { getMemberWithTeamCountClient } from '@/features/members/services/member-client-service';
 import { formatDate } from '@/lib/format';
 import type { MemberWithProfile } from '@/features/members/types/member-types';
 
@@ -19,24 +19,9 @@ export function MemberStats({ memberId }: MemberStatsProps) {
 
   useEffect(() => {
     async function fetchData() {
-      const supabase = createClient();
-
-      const [memberResult, teamsResult] = await Promise.all([
-        supabase
-          .from('members')
-          .select('*, profile:profiles(*)')
-          .eq('id', memberId)
-          .single(),
-        supabase
-          .from('team_members')
-          .select('id', { count: 'exact' })
-          .eq('member_id', memberId),
-      ]);
-
-      if (memberResult.data) {
-        setMember(memberResult.data as unknown as MemberWithProfile);
-      }
-      setTeamCount(teamsResult.count ?? 0);
+      const { member: memberData, teamCount: count } = await getMemberWithTeamCountClient(memberId);
+      if (memberData) setMember(memberData);
+      setTeamCount(count);
       setLoading(false);
     }
 

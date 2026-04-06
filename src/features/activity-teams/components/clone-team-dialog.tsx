@@ -17,9 +17,12 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { cloneTeam } from '@/features/activity-teams/services/activity-team-service';
+import {
+  cloneTeam,
+  getActivitiesForOrg,
+  getOwnTeamsForActivity,
+} from '@/features/activity-teams/services/activity-team-service';
 import type { Activity, ActivityTeam } from '@/lib/supabase/database.types';
 
 interface CloneTeamDialogProps {
@@ -49,15 +52,8 @@ export function CloneTeamDialog({
   const fetchActivities = useCallback(async () => {
     if (!orgId) return;
     setLoadingActivities(true);
-    const supabase = createClient();
-
-    const { data } = await supabase
-      .from('activities')
-      .select('*')
-      .eq('organisation_id', orgId)
-      .order('start_date', { ascending: false });
-
-    setActivities((data as unknown as Activity[]) ?? []);
+    const { data } = await getActivitiesForOrg(orgId);
+    setActivities(data ?? []);
     setLoadingActivities(false);
   }, [orgId]);
 
@@ -67,16 +63,8 @@ export function CloneTeamDialog({
       return;
     }
     setLoadingTeams(true);
-    const supabase = createClient();
-
-    const { data } = await supabase
-      .from('activity_teams')
-      .select('*')
-      .eq('activity_id', selectedActivityId)
-      .eq('is_own_team', true)
-      .order('name');
-
-    setTeams((data as unknown as ActivityTeam[]) ?? []);
+    const { data } = await getOwnTeamsForActivity(selectedActivityId);
+    setTeams(data ?? []);
     setLoadingTeams(false);
   }, [selectedActivityId]);
 

@@ -10,7 +10,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ATTENDANCE_STATUS_OPTIONS } from '@/lib/constants';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getTrialTeamIds,
+  getTrialRosterMembersForTeams,
+  getAttendanceForEventClient,
+  upsertTrialAttendance,
+} from '@/features/trials/services/trial-service';
 import type {
   AttendanceStatus,
   MemberWithProfile,
@@ -46,44 +51,18 @@ export function TrialAttendanceTracker({
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const supabase = createClient();
 
-    // Get members from this trial's own teams
-    const { data: teamData } = await supabase
-      .from('activity_teams')
-      .select('id')
-      .eq('activity_id', activityId);
-
-    const teamIds = (teamData ?? []).map((t: { id: string }) => t.id);
-
-    const [membersResult, attendanceResult] = await Promise.all([
-      teamIds.length > 0
-        ? supabase
-            .from('activity_team_members')
-            .select('member_id, member:members(*, profile:profiles(*))')
-            .in('activity_team_id', teamIds)
-        : Promise.resolve({ data: [] }),
-      supabase
-        .from('activity_event_attendance')
-        .select('*')
-        .eq('event_id', eventId),
+    const { data: teamIds } = await getTrialTeamIds(activityId);
+    const [{ data: uniqueMembers }, { data: attendanceRows }] = await Promise.all([
+      getTrialRosterMembersForTeams(teamIds ?? []),
+      getAttendanceForEventClient(eventId),
     ]);
 
-    if (membersResult.data) {
-      const seen = new Set<string>();
-      const unique: MemberWithProfile[] = [];
-      for (const tm of membersResult.data as unknown as { member_id: string; member: MemberWithProfile }[]) {
-        if (!seen.has(tm.member_id)) {
-          seen.add(tm.member_id);
-          unique.push(tm.member);
-        }
-      }
-      setMembers(unique);
-    }
+    if (uniqueMembers) setMembers(uniqueMembers);
 
-    if (attendanceResult.data) {
+    if (attendanceRows) {
       const map: Record<string, { status: AttendanceStatus; id?: string }> = {};
-      for (const row of attendanceResult.data as unknown as ActivityEventAttendance[]) {
+      for (const row of attendanceRows as ActivityEventAttendance[]) {
         map[row.member_id] = { status: row.status, id: row.id };
       }
       setAttendanceMap(map);
@@ -98,44 +77,20 @@ export function TrialAttendanceTracker({
 
   async function handleStatusChange(memberId: string, status: AttendanceStatus) {
     setSaving(memberId);
-    const supabase = createClient();
     const existing = attendanceMap[memberId];
+    const { id: newId } = await upsertTrialAttendance(eventId, memberId, status, existing?.id);
 
-    if (existing?.id) {
-      await supabase
-        .from('activity_event_attendance')
-        .update({
-          status,
-          checked_in_at: status === 'attended' ? new Date().toISOString() : null,
-        })
-        .eq('id', existing.id);
+    if (!existing?.id && newId) {
+      setAttendanceMap((prev) => ({
+        ...prev,
+        [memberId]: { status, id: newId },
+      }));
     } else {
-      const { data } = await supabase
-        .from('activity_event_attendance')
-        .insert({
-          event_id: eventId,
-          member_id: memberId,
-          status,
-          checked_in_at: status === 'attended' ? new Date().toISOString() : null,
-          notes: null,
-        })
-        .select('id')
-        .single();
-
-      if (data) {
-        setAttendanceMap((prev) => ({
-          ...prev,
-          [memberId]: { status, id: (data as { id: string }).id },
-        }));
-        setSaving(null);
-        return;
-      }
+      setAttendanceMap((prev) => ({
+        ...prev,
+        [memberId]: { ...prev[memberId], status },
+      }));
     }
-
-    setAttendanceMap((prev) => ({
-      ...prev,
-      [memberId]: { ...prev[memberId], status },
-    }));
     setSaving(null);
   }
 

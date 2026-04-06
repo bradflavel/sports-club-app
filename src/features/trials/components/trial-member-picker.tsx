@@ -12,7 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getOrCreateRosterTeam,
+  getRosterMembers,
+  removeRosterMember,
+  addRosterMembers,
+  getActiveMembersForOrg,
+} from '@/features/trials/services/trial-service';
 import type { MemberWithProfile, CompetitionDivision } from '@/lib/supabase/database.types';
 
 function calcAge(dob: string): number {
@@ -54,45 +60,14 @@ export function TrialMemberPicker({ activityId, orgId, division }: TrialMemberPi
   const [addOpen, setAddOpen] = useState(false);
 
   const fetchRoster = useCallback(async () => {
-    const supabase = createClient();
-
-    const { data: teams } = await supabase
-      .from('activity_teams')
-      .select('id')
-      .eq('activity_id', activityId)
-      .limit(1);
-
-    let teamId: string;
-    if (!teams || teams.length === 0) {
-      const { data: newTeam } = await supabase
-        .from('activity_teams')
-        .insert({
-          activity_id: activityId,
-          organisation_id: orgId,
-          name: 'Roster',
-          division: division?.name ?? null,
-          age_group: division?.age_group ?? null,
-          coach_id: null,
-          manager_id: null,
-          max_players: 999,
-          is_own_team: true,
-          source_team_id: null,
-          pool_number: null,
-          seed_number: null,
-        })
-        .select('id')
-        .single();
-      teamId = (newTeam as { id: string }).id;
-    } else {
-      teamId = (teams[0] as { id: string }).id;
+    const { teamId } = await getOrCreateRosterTeam(activityId, orgId, division);
+    if (!teamId) {
+      setLoading(false);
+      return;
     }
     setRosterTeamId(teamId);
 
-    const { data: members } = await supabase
-      .from('activity_team_members')
-      .select('id, member_id, member:members(*, profile:profiles(*))')
-      .eq('activity_team_id', teamId);
-
+    const { data: members } = await getRosterMembers(teamId);
     const roster: TrialRosterMember[] = (members ?? []).map((m: unknown) => {
       const row = m as { id: string; member: MemberWithProfile };
       return { teamMemberId: row.id, member: row.member };
@@ -106,8 +81,7 @@ export function TrialMemberPicker({ activityId, orgId, division }: TrialMemberPi
   }, [fetchRoster]);
 
   async function handleRemove(teamMemberId: string) {
-    const supabase = createClient();
-    await supabase.from('activity_team_members').delete().eq('id', teamMemberId);
+    await removeRosterMember(teamMemberId);
     setRosterMembers((prev) => prev.filter((m) => m.teamMemberId !== teamMemberId));
   }
 
@@ -225,14 +199,8 @@ function AddMembersDialog({
 
   const fetchMembers = useCallback(async () => {
     setFetching(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('members')
-      .select('*, profile:profiles(*)')
-      .eq('organisation_id', orgId)
-      .eq('membership_status', 'active')
-      .order('profile(first_name)');
-    setAllMembers((data as unknown as MemberWithProfile[]) ?? []);
+    const { data } = await getActiveMembersForOrg(orgId);
+    setAllMembers(data ?? []);
     setFetching(false);
   }, [orgId]);
 
@@ -287,15 +255,7 @@ function AddMembersDialog({
   async function handleAdd() {
     if (selected.size === 0) return;
     setLoading(true);
-    const supabase = createClient();
-    const inserts = [...selected].map((memberId) => ({
-      activity_team_id: teamId,
-      member_id: memberId,
-      jersey_number: null,
-      position: null,
-      is_captain: false,
-    }));
-    await supabase.from('activity_team_members').insert(inserts);
+    await addRosterMembers(teamId, [...selected]);
     setLoading(false);
     onOpenChange(false);
     onMembersAdded();

@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { EmptyState } from '@/components/shared/empty-state';
 import { AlbumForm } from './album-form';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getAlbumsClient,
+  createAlbumClient,
+} from '@/features/photos/services/photo-client-service';
 import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
 import Image from 'next/image';
@@ -25,12 +28,7 @@ export function AlbumGrid() {
 
   const fetchAlbums = useCallback(async () => {
     if (!profile?.organisation_id) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('photo_albums')
-      .select('*')
-      .eq('organisation_id', profile.organisation_id)
-      .order('created_at', { ascending: false });
+    const { data } = await getAlbumsClient(profile.organisation_id);
     setAlbums(data || []);
     setLoading(false);
   }, [profile?.organisation_id]);
@@ -41,8 +39,7 @@ export function AlbumGrid() {
 
   const handleCreate = async (data: { name: string; description: string }) => {
     if (!profile?.organisation_id) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('photo_albums').insert({
+    const { error } = await createAlbumClient({
       organisation_id: profile.organisation_id,
       name: data.name,
       description: data.description || null,

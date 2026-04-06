@@ -10,9 +10,8 @@ import { FileUpload } from '@/components/shared/file-upload';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { parseCsvData } from '@/features/members/services/csv-parser';
-import { createClient } from '@/lib/supabase/client';
+import { importMembersFromCsvClient } from '@/features/members/services/member-client-service';
 import type { CsvImportResult } from '@/features/members/types/member-types';
-import type { MembershipType } from '@/lib/supabase/database.types';
 
 const STEPS = ['Upload', 'Preview', 'Confirm', 'Import'] as const;
 type Step = 0 | 1 | 2 | 3;
@@ -78,96 +77,12 @@ export function CsvImportWizard({ orgId, onImportComplete }: CsvImportWizardProp
     setStep(3);
     setImportProgress(0);
 
-    const supabase = createClient();
     const total = parseResult.successCount;
-    let done = 0;
-    let imported = 0;
-    const errors: string[] = [];
-
-    for (const row of parseResult.success) {
-      try {
-        // Check if a profile with this email already exists
-        const { data: existingProfile, error: lookupError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', row.email)
-          .single();
-
-        let profileId: string;
-
-        if (existingProfile) {
-          profileId = existingProfile.id;
-        } else if (lookupError && lookupError.code === 'PGRST116') {
-          // No matching row found — create a new profile
-          const newId = crypto.randomUUID();
-          const { error: profileInsertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: newId,
-              first_name: row.first_name,
-              last_name: row.last_name,
-              email: row.email,
-              phone: row.phone || null,
-              date_of_birth: row.date_of_birth || null,
-              avatar_url: null,
-              emergency_contact_name: null,
-              emergency_contact_phone: null,
-              organisation_id: orgId,
-              role: 'member' as const,
-            });
-
-          if (profileInsertError) {
-            errors.push(`Row ${done + 1} (${row.email}): failed to create profile — ${profileInsertError.message}`);
-            done += 1;
-            setImportProgress(Math.round((done / total) * 100));
-            continue;
-          }
-          profileId = newId;
-        } else if (lookupError) {
-          errors.push(`Row ${done + 1} (${row.email}): profile lookup failed — ${lookupError.message}`);
-          done += 1;
-          setImportProgress(Math.round((done / total) * 100));
-          continue;
-        } else {
-          // Should not happen, but guard against it
-          errors.push(`Row ${done + 1} (${row.email}): unexpected lookup result`);
-          done += 1;
-          setImportProgress(Math.round((done / total) * 100));
-          continue;
-        }
-
-        // Create the member record
-        const { error: memberInsertError } = await supabase
-          .from('members')
-          .insert({
-            profile_id: profileId,
-            organisation_id: orgId,
-            membership_type: row.membership_type as MembershipType,
-            membership_status: 'active' as const,
-            registration_date: new Date().toISOString().split('T')[0],
-            expiry_date: null,
-            medical_conditions: null,
-            dietary_requirements: null,
-            notes: null,
-          });
-
-        if (memberInsertError) {
-          // Duplicate member in same org — treat as warning/skip
-          if (memberInsertError.code === '23505') {
-            errors.push(`Row ${done + 1} (${row.email}): member already exists in this organisation — skipped`);
-          } else {
-            errors.push(`Row ${done + 1} (${row.email}): failed to create member — ${memberInsertError.message}`);
-          }
-        } else {
-          imported += 1;
-        }
-      } catch (err) {
-        errors.push(`Row ${done + 1} (${row.email}): unexpected error — ${err instanceof Error ? err.message : String(err)}`);
-      }
-
-      done += 1;
-      setImportProgress(Math.round((done / total) * 100));
-    }
+    const { importedCount: imported, errors } = await importMembersFromCsvClient(
+      orgId,
+      parseResult.success,
+      (done) => setImportProgress(Math.round((done / total) * 100))
+    );
 
     setImportedCount(imported);
     setImportErrors(errors);

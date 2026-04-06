@@ -9,7 +9,11 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
 import { DocumentCard } from './document-card';
 import { DocumentUploadDialog } from './document-upload-dialog';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getDocumentsClient,
+  uploadDocumentClient,
+  deleteDocumentClient,
+} from '@/features/documents/services/document-client-service';
 import { validateDocumentFile } from '@/lib/file-validation';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/use-user';
@@ -31,21 +35,7 @@ export function DocumentLibrary() {
 
   const fetchDocuments = useCallback(async () => {
     if (!profile?.organisation_id) return;
-    const supabase = createClient();
-    let query = supabase
-      .from('documents')
-      .select('*')
-      .eq('organisation_id', profile.organisation_id)
-      .order('created_at', { ascending: false });
-
-    if (category !== 'all') {
-      query = query.eq('category', category as import('@/lib/supabase/database.types').DocumentCategory);
-    }
-    if (search) {
-      query = query.ilike('title', `%${search}%`);
-    }
-
-    const { data } = await query;
+    const { data } = await getDocumentsClient(profile.organisation_id, { category, search });
     setDocuments(data || []);
     setLoading(false);
   }, [profile?.organisation_id, category, search]);
@@ -69,33 +59,15 @@ export function DocumentLibrary() {
       return;
     }
 
-    const supabase = createClient();
-    const filePath = `${profile.organisation_id}/${Date.now()}-${data.file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, data.file);
-
-    if (uploadError) {
-      toast({ title: 'Upload failed', description: uploadError.message, variant: 'destructive' });
-      return;
-    }
-
-    // Store the storage path, not a public URL — we generate signed URLs on demand
-    const { error } = await supabase.from('documents').insert({
-      organisation_id: profile.organisation_id,
+    const { error } = await uploadDocumentClient(profile.organisation_id, profile.id, data.file, {
       title: data.title,
       description: data.description,
-      category: data.category as Document['category'],
-      is_public: data.isPublic,
-      file_url: filePath,
-      file_name: data.file.name,
-      file_size_bytes: data.file.size,
-      file_type: data.file.type,
-      uploaded_by: profile.id,
+      category: data.category,
+      isPublic: data.isPublic,
     });
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
       return;
     }
 
@@ -104,17 +76,10 @@ export function DocumentLibrary() {
   };
 
   const handleDelete = async (id: string) => {
-    const supabase = createClient();
-    // Get file URL before deleting the record
-    const { data: doc } = await supabase.from('documents').select('file_url').eq('id', id).single();
-    const { error } = await supabase.from('documents').delete().eq('id', id);
+    const { error } = await deleteDocumentClient(id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return;
-    }
-    // Remove the storage object (file_url now stores the path directly)
-    if (doc?.file_url) {
-      await supabase.storage.from('documents').remove([doc.file_url]);
     }
     toast({ title: 'Document deleted' });
     fetchDocuments();

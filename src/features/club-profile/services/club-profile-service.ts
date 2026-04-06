@@ -205,3 +205,36 @@ export async function deleteFeeEntry(id: string) {
 
   return { data: null, error };
 }
+
+// ---------------------------------------------------------------------------
+// Logo upload
+// ---------------------------------------------------------------------------
+
+const LOGOS_BUCKET = 'logos';
+
+/**
+ * Upload a logo file for the given organisation.
+ * Returns the public URL of the uploaded logo (with cache-busting query param).
+ */
+export async function uploadLogoClient(
+  orgId: string,
+  file: File
+): Promise<{ publicUrl: string | null; error: Error | null }> {
+  const supabase = createClient();
+
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `logos/${orgId}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(LOGOS_BUCKET)
+    .upload(path, file, { upsert: true });
+
+  if (uploadError) {
+    return { publicUrl: null, error: uploadError };
+  }
+
+  const { data: urlData } = supabase.storage.from(LOGOS_BUCKET).getPublicUrl(path);
+  const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+  return { publicUrl, error: null };
+}

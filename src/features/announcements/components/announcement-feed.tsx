@@ -8,7 +8,12 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { AnnouncementCard } from './announcement-card';
 import { AnnouncementForm } from './announcement-form';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getAnnouncementsClient,
+  createAnnouncementClient,
+  updateAnnouncementClient,
+  deleteAnnouncementClient,
+} from '@/features/announcements/services/announcement-client-service';
 import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
 import type { AnnouncementWithAuthor } from '@/lib/supabase/database.types';
@@ -26,14 +31,8 @@ export function AnnouncementFeed() {
 
   const fetchAnnouncements = useCallback(async () => {
     if (!profile?.organisation_id) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('announcements')
-      .select('*, author:profiles!announcements_author_id_fkey(*)')
-      .eq('organisation_id', profile.organisation_id)
-      .order('is_pinned', { ascending: false })
-      .order('published_at', { ascending: false });
-    setAnnouncements((data as unknown as AnnouncementWithAuthor[]) || []);
+    const { data } = await getAnnouncementsClient(profile.organisation_id);
+    setAnnouncements(data || []);
     setLoading(false);
   }, [profile?.organisation_id]);
 
@@ -48,8 +47,7 @@ export function AnnouncementFeed() {
     expiresAt: string | null;
   }) => {
     if (!profile?.organisation_id) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('announcements').insert({
+    const { error } = await createAnnouncementClient({
       organisation_id: profile.organisation_id,
       title: data.title,
       content: data.content,
@@ -74,16 +72,12 @@ export function AnnouncementFeed() {
     expiresAt: string | null;
   }) => {
     if (!editAnnouncement) return;
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('announcements')
-      .update({
-        title: data.title,
-        content: data.content,
-        is_pinned: data.isPinned,
-        expires_at: data.expiresAt,
-      })
-      .eq('id', editAnnouncement.id);
+    const { error } = await updateAnnouncementClient(editAnnouncement.id, {
+      title: data.title,
+      content: data.content,
+      is_pinned: data.isPinned,
+      expires_at: data.expiresAt,
+    });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return;
@@ -95,8 +89,7 @@ export function AnnouncementFeed() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('announcements').delete().eq('id', deleteId);
+    const { error } = await deleteAnnouncementClient(deleteId);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return;

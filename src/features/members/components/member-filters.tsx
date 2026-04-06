@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
+import { getTeamsClient } from '@/features/members/services/member-client-service';
 import type { MemberFilters } from '@/features/members/types/member-types';
 import type { Team, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
@@ -45,8 +45,7 @@ export function MemberFilters({ filters, onFiltersChange, membershipTypes }: Mem
 
   useEffect(() => {
     async function fetchTeams() {
-      const supabase = createClient();
-      const { data } = await supabase.from('teams').select('id, name').order('name');
+      const { data } = await getTeamsClient();
       if (data) setTeams(data as Team[]);
     }
     fetchTeams();

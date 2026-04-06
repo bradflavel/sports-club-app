@@ -273,3 +273,58 @@ export async function removeTeamMember(memberId: string) {
 
   return { data: null, error };
 }
+
+export async function getAvailableMembersForTeam(
+  orgId: string,
+  excludeMemberIds: string[]
+) {
+  const supabase = createClient();
+
+  let query = supabase
+    .from('members')
+    .select('*, profile:profiles(*)')
+    .eq('organisation_id', orgId)
+    .eq('membership_status', 'active');
+
+  if (excludeMemberIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeMemberIds.join(',')})`);
+  }
+
+  const { data, error } = await query.order('profile(first_name)');
+
+  return {
+    data: data as unknown as import('@/lib/supabase/database.types').MemberWithProfile[] | null,
+    error,
+  };
+}
+
+export async function getActivitiesForOrg(orgId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*')
+    .eq('organisation_id', orgId)
+    .order('start_date', { ascending: false });
+
+  return {
+    data: data as unknown as import('@/lib/supabase/database.types').Activity[] | null,
+    error,
+  };
+}
+
+export async function getOwnTeamsForActivity(activityId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('activity_teams')
+    .select('*')
+    .eq('activity_id', activityId)
+    .eq('is_own_team', true)
+    .order('name');
+
+  return {
+    data: data as unknown as import('@/lib/supabase/database.types').ActivityTeam[] | null,
+    error,
+  };
+}
