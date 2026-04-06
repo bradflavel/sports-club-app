@@ -72,6 +72,7 @@ function createColumns(
   return [
     {
       id: 'select',
+      size: 40,
       header: ({ table }) => (
         <Checkbox
           checked={
@@ -94,6 +95,7 @@ function createColumns(
     },
     {
       id: 'name',
+      size: 200,
       accessorFn: (row) => `${row.profile.first_name} ${row.profile.last_name}`,
       header: ({ column }) => (
         <Button
@@ -120,6 +122,7 @@ function createColumns(
     },
     {
       id: 'age',
+      size: 80,
       accessorFn: (row) => row.profile.date_of_birth,
       header: 'Age',
       cell: ({ row }) => {
@@ -150,6 +153,7 @@ function createColumns(
     },
     {
       id: 'email',
+      size: 220,
       accessorFn: (row) => row.profile.email,
       header: 'Email',
       cell: ({ getValue }) => (
@@ -158,6 +162,7 @@ function createColumns(
     },
     {
       id: 'phone',
+      size: 130,
       accessorFn: (row) => row.profile.phone,
       header: 'Phone',
       cell: ({ getValue }) => (
@@ -166,6 +171,7 @@ function createColumns(
     },
     {
       id: 'membershipType',
+      size: 100,
       accessorKey: 'membership_type',
       header: 'Type',
       cell: ({ row }) => (
@@ -177,6 +183,7 @@ function createColumns(
     },
     {
       id: 'status',
+      size: 110,
       accessorKey: 'membership_status',
       header: ({ column }) => (
         <Button
@@ -194,6 +201,7 @@ function createColumns(
     },
     {
       id: 'joinedDate',
+      size: 120,
       accessorKey: 'registration_date',
       header: ({ column }) => (
         <Button
@@ -215,6 +223,7 @@ function createColumns(
     },
     {
       id: 'actions',
+      size: 50,
       header: '',
       cell: ({ row }) => {
         const member = row.original;

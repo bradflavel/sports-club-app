@@ -5,23 +5,25 @@ import { useRouter } from 'next/navigation';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
 import { getActivityBySlug } from '@/features/activities/services/activity-service';
 import { useOrganisation } from '@/hooks/use-organisation';
+import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
 import { getActivityListPath } from '@/lib/utils';
+import type { Activity } from '@/lib/supabase/database.types';
 
 interface ActivityDetailBySlugProps {
   slug: string;
 }
 
 /**
- * Resolves a slug to an activity ID and dynamically imports the detail page.
- * This is a thin wrapper used by all type-based routes (e.g. /competitions/[slug]).
- * It sets the activityId in the URL so the existing detail page can read it.
+ * Resolves a slug to an activity and renders either admin or member view.
+ * For non-admin users viewing a competition, renders the member experience.
  */
 export function ActivityDetailBySlug({ slug }: ActivityDetailBySlugProps) {
   const { organisation, loading: orgLoading } = useOrganisation();
+  const { profile, loading: userLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
-  const [activityId, setActivityId] = useState<string | null>(null);
+  const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,21 +36,34 @@ export function ActivityDetailBySlug({ slug }: ActivityDetailBySlugProps) {
         router.push('/dashboard');
         return;
       }
-      setActivityId(data.id);
+      setActivity(data);
       setLoading(false);
     }
 
     resolve();
   }, [slug, organisation?.id, orgLoading, toast, router]);
 
-  if (loading || !activityId) return <PageSkeleton />;
+  if (loading || !activity || userLoading) return <PageSkeleton />;
 
-  // Dynamically render the activity detail page with the resolved ID
-  // We use a lazy import pattern to avoid circular dependencies
-  return <ActivityDetailContent activityId={activityId} />;
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
+
+  // Non-admin viewing a competition gets the member experience
+  if (activity.activity_type === 'competition' && !isAdmin) {
+    return <CompetitionDetailMemberWrapper activity={activity} />;
+  }
+
+  // All other cases: admin view or non-competition activity types
+  return <ActivityDetailContent activityId={activity.id} />;
 }
 
-// Inline the actual detail page import to avoid issues
+// Lazy-loaded member detail view
+import { CompetitionDetailMember } from '@/features/competitions/components/competition-detail-member';
+
+function CompetitionDetailMemberWrapper({ activity }: { activity: Activity }) {
+  return <CompetitionDetailMember activity={activity} />;
+}
+
+// Existing admin detail view
 import { ActivityDetailPageContent } from '@/app/(dashboard)/activities/[id]/page';
 
 function ActivityDetailContent({ activityId }: { activityId: string }) {

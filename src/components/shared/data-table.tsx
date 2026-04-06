@@ -75,14 +75,15 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
-        <table className="w-full caption-bottom text-sm">
+        <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'fixed' }}>
           <thead className="border-b bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                    className="h-12 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden"
+                    style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder
                       ? null
@@ -101,7 +102,7 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="p-4 align-middle">
+                    <td key={cell.id} className="p-4 align-middle overflow-hidden text-ellipsis">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

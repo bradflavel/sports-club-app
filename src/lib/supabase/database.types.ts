@@ -138,6 +138,7 @@ export interface Profile {
   avatar_url: string | null;
   organisation_id: string | null;
   role: UserRole;
+  gender?: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   created_at: string;
@@ -395,6 +396,15 @@ export interface Activity {
   trial_fee_amount_cents?: number | null;
   // Per-division trials link (migration 00018)
   competition_division_id?: string | null;
+  // Season cost (migration 00021)
+  season_fee_type?: 'free' | 'fixed' | 'range' | 'tbd';
+  season_fee_amount_cents?: number;
+  season_fee_min_cents?: number;
+  season_fee_max_cents?: number;
+  // Draft, skill, commitment (migration 00022)
+  is_draft?: boolean;
+  skill_level?: 'beginner' | 'intermediate' | 'advanced' | 'elite' | 'all_levels' | null;
+  commitment_level?: 'casual' | 'regular' | 'committed' | 'competitive' | null;
   // URL slug (migration 00019)
   slug: string;
   created_at: string;

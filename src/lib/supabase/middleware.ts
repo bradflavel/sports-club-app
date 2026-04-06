@@ -29,12 +29,25 @@ export async function updateSession(request: NextRequest) {
 
   const isAuthPage =
     request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/signup');
+    request.nextUrl.pathname.startsWith('/signup') ||
+    request.nextUrl.pathname.startsWith('/forgot-password');
+  const isResetPasswordPage = request.nextUrl.pathname.startsWith('/reset-password');
   const isPublicPage = request.nextUrl.pathname === '/';
   const isJoinPage = request.nextUrl.pathname.startsWith('/join');
   const isOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding');
 
-  if (!user && !isAuthPage && !isPublicPage && !isJoinPage && !isOnboardingPage) {
+  // If a password reset code arrives, redirect to the auth callback to exchange it
+  const code = request.nextUrl.searchParams.get('code');
+  const nextParam = request.nextUrl.searchParams.get('next');
+  if (code && !request.nextUrl.pathname.startsWith('/auth/callback')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/callback';
+    url.searchParams.set('code', code);
+    if (nextParam) url.searchParams.set('next', nextParam);
+    return NextResponse.redirect(url);
+  }
+
+  if (!user && !isAuthPage && !isPublicPage && !isJoinPage && !isOnboardingPage && !isResetPasswordPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

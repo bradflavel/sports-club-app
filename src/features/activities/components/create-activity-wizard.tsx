@@ -77,6 +77,15 @@ export interface WizardOutput {
     ageGroup: string;
     gender: string;
   }>;
+  // Season cost
+  seasonFeeType: 'free' | 'fixed' | 'range' | 'tbd';
+  seasonFeeAmountCents: number;
+  seasonFeeMinCents: number;
+  seasonFeeMaxCents: number;
+  // Draft, skill, commitment
+  isDraft: boolean;
+  skillLevel: string;
+  commitmentLevel: string;
   poolCount?: number;
   defaultVenue?: string;
   defaultStartTime?: string;
@@ -117,6 +126,17 @@ export function CreateActivityWizard({
   const [trialsRequired, setTrialsRequired] = useState(false);
   const [trainingRequired, setTrainingRequired] = useState(false);
   const [hasFinals, setHasFinals] = useState(false);
+
+  // Step 2: Season Cost
+  const [seasonFeeType, setSeasonFeeType] = useState<'free' | 'fixed' | 'range' | 'tbd'>('tbd');
+  const [seasonFeeAmount, setSeasonFeeAmount] = useState('');
+  const [seasonFeeMin, setSeasonFeeMin] = useState('');
+  const [seasonFeeMax, setSeasonFeeMax] = useState('');
+
+  // Step 2: Draft, Skill, Commitment
+  const [isDraft, setIsDraft] = useState(false);
+  const [skillLevel, setSkillLevel] = useState('');
+  const [commitmentLevel, setCommitmentLevel] = useState('');
 
   // Step 3: Key Dates
   const [registrationOpens, setRegistrationOpens] = useState('');
@@ -267,6 +287,13 @@ export function CreateActivityWizard({
       trialsRequired,
       trainingRequired,
       hasFinals,
+      seasonFeeType,
+      seasonFeeAmountCents: seasonFeeAmount ? Math.round(parseFloat(seasonFeeAmount) * 100) : 0,
+      seasonFeeMinCents: seasonFeeMin ? Math.round(parseFloat(seasonFeeMin) * 100) : 0,
+      seasonFeeMaxCents: seasonFeeMax ? Math.round(parseFloat(seasonFeeMax) * 100) : 0,
+      isDraft,
+      skillLevel,
+      commitmentLevel,
       roundDates,
       divisions: divisions
         .filter((d) => d.name.trim() !== '')
@@ -440,9 +467,12 @@ export function CreateActivityWizard({
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description..."
-              rows={3}
+              placeholder="Describe what this competition is about, what players can expect, format details, any requirements..."
+              rows={6}
             />
+            <p className="text-xs text-muted-foreground">
+              This is shown to members on the competition page. Multiple paragraphs are supported.
+            </p>
           </div>
         </div>
       )}
@@ -487,6 +517,136 @@ export function CreateActivityWizard({
               </div>
               <Switch checked={hasFinals} onCheckedChange={setHasFinals} />
             </div>
+          </div>
+
+          {/* Season Cost */}
+          <div className="space-y-3 pt-2">
+            <div>
+              <h4 className="text-sm font-semibold">Cost per Person</h4>
+              <p className="text-xs text-muted-foreground">
+                How much does it cost to play for the season?
+              </p>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              {([
+                { value: 'tbd', label: 'TBD' },
+                { value: 'free', label: 'Free' },
+                { value: 'fixed', label: 'Fixed' },
+                { value: 'range', label: 'Range' },
+              ] as const).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={cn(
+                    'rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                    seasonFeeType === option.value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:bg-accent'
+                  )}
+                  onClick={() => setSeasonFeeType(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            {seasonFeeType === 'fixed' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="seasonFeeAmount">Amount ($)</Label>
+                <Input
+                  id="seasonFeeAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 150.00"
+                  value={seasonFeeAmount}
+                  onChange={(e) => setSeasonFeeAmount(e.target.value)}
+                />
+              </div>
+            )}
+
+            {seasonFeeType === 'range' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="seasonFeeMin">From ($)</Label>
+                  <Input
+                    id="seasonFeeMin"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 100.00"
+                    value={seasonFeeMin}
+                    onChange={(e) => setSeasonFeeMin(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="seasonFeeMax">To ($)</Label>
+                  <Input
+                    id="seasonFeeMax"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 250.00"
+                    value={seasonFeeMax}
+                    onChange={(e) => setSeasonFeeMax(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Skill + Commitment level */}
+          <div className="space-y-3 pt-2">
+            <div>
+              <h4 className="text-sm font-semibold">Player Info</h4>
+              <p className="text-xs text-muted-foreground">
+                Helps members understand if this competition suits them.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="skillLevel">Skill Level</Label>
+                <Select value={skillLevel} onValueChange={setSkillLevel}>
+                  <SelectTrigger id="skillLevel">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all_levels">All Levels Welcome</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                    <SelectItem value="elite">Elite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="commitmentLevel">Commitment Level</Label>
+                <Select value={commitmentLevel} onValueChange={setCommitmentLevel}>
+                  <SelectTrigger id="commitmentLevel">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="casual">Casual — play when you can</SelectItem>
+                    <SelectItem value="regular">Regular — most weeks</SelectItem>
+                    <SelectItem value="committed">Committed — every week</SelectItem>
+                    <SelectItem value="competitive">Competitive — full commitment</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Draft mode */}
+          <div className="flex items-center justify-between rounded-md border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Save as Draft</p>
+              <p className="text-xs text-muted-foreground">
+                Draft competitions are hidden from members until published.
+              </p>
+            </div>
+            <Switch checked={isDraft} onCheckedChange={setIsDraft} />
           </div>
         </div>
       )}
@@ -812,6 +972,34 @@ export function CreateActivityWizard({
                 <span className="font-medium">Finals:</span>{' '}
                 {hasFinals ? 'Yes' : 'No'}
               </p>
+              <p>
+                <span className="font-medium">Cost per person:</span>{' '}
+                {seasonFeeType === 'tbd' && 'TBD'}
+                {seasonFeeType === 'free' && 'Free'}
+                {seasonFeeType === 'fixed' && (seasonFeeAmount ? `$${parseFloat(seasonFeeAmount).toFixed(2)}` : '$0.00')}
+                {seasonFeeType === 'range' && (
+                  seasonFeeMin && seasonFeeMax
+                    ? `$${parseFloat(seasonFeeMin).toFixed(2)} – $${parseFloat(seasonFeeMax).toFixed(2)}`
+                    : 'Range not set'
+                )}
+              </p>
+              {skillLevel && (
+                <p>
+                  <span className="font-medium">Skill level:</span>{' '}
+                  {skillLevel === 'all_levels' ? 'All Levels' : skillLevel.charAt(0).toUpperCase() + skillLevel.slice(1)}
+                </p>
+              )}
+              {commitmentLevel && (
+                <p>
+                  <span className="font-medium">Commitment:</span>{' '}
+                  {commitmentLevel.charAt(0).toUpperCase() + commitmentLevel.slice(1)}
+                </p>
+              )}
+              {isDraft && (
+                <p className="text-amber-600 font-medium">
+                  Saved as draft — not visible to members
+                </p>
+              )}
               {(trialsRequired || trainingRequired || hasFinals) && (
                 <p className="text-xs text-muted-foreground italic mt-1">
                   You&apos;ll be prompted to set these up after creation.

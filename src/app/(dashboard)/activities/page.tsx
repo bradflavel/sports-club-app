@@ -19,6 +19,7 @@ import { getActivities, createActivity } from '@/features/activities/services/ac
 import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
+import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
 import { generateSlug, getActivityPath } from '@/lib/utils';
 import type { Activity, ActivityType } from '@/lib/supabase/database.types';
@@ -33,7 +34,9 @@ export default function ActivitiesPage({ typeOverride }: ActivitiesPageProps = {
   const typeParam = typeOverride ?? (searchParams.get('type') as ActivityType | null);
   const parentParam = searchParams.get('parent');
   const { organisation, loading: orgLoading } = useOrganisation();
+  const { profile } = useUser();
   const { toast } = useToast();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +92,7 @@ export default function ActivitiesPage({ typeOverride }: ActivitiesPageProps = {
         description: data.description || null,
         start_date: data.startDate || data.firstRoundDate || null,
         end_date: data.endDate || null,
-        is_current: true,
+        is_current: data.isDraft ? false : true,
         total_rounds: data.totalRounds ?? null,
         has_finals: data.hasFinals ?? null,
         pool_count: data.poolCount ?? null,
@@ -110,6 +113,15 @@ export default function ActivitiesPage({ typeOverride }: ActivitiesPageProps = {
         trials_required: data.trialsRequired ?? false,
         training_required: data.trainingRequired ?? false,
         round_dates: data.roundDates?.length ? data.roundDates : null,
+        // Season cost
+        season_fee_type: data.seasonFeeType || 'tbd',
+        season_fee_amount_cents: data.seasonFeeAmountCents || 0,
+        season_fee_min_cents: data.seasonFeeMinCents || 0,
+        season_fee_max_cents: data.seasonFeeMaxCents || 0,
+        // Draft, skill, commitment
+        is_draft: data.isDraft ?? false,
+        skill_level: (data.skillLevel || null) as Activity['skill_level'],
+        commitment_level: (data.commitmentLevel || null) as Activity['commitment_level'],
       })
       .select('id')
       .single();
@@ -225,10 +237,12 @@ export default function ActivitiesPage({ typeOverride }: ActivitiesPageProps = {
           </Badge>
         }
         actions={
-          <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Create {singularLabel}
-          </Button>
+          isAdmin ? (
+            <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Create {singularLabel}
+            </Button>
+          ) : undefined
         }
       />
 

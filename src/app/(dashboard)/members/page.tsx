@@ -9,23 +9,42 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MemberTable, exportMembersCsv } from '@/features/members/components/member-table';
+import { AvatarWithName } from '@/components/shared/avatar-with-name';
 import { MemberFilters } from '@/features/members/components/member-filters';
+import { getMembershipTypes } from '@/features/members/services/membership-type-service';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
+import { useUser } from '@/hooks/use-user';
 import { useToast } from '@/components/ui/use-toast';
+import { calculateAge } from '@/lib/format';
 import type { MemberWithProfile, MemberFilters as MemberFiltersType, MembershipStatus } from '@/features/members/types/member-types';
+import type { MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 export default function MembersPage() {
   const { organisation, loading: orgLoading } = useOrganisation();
+  const { profile, loading: userLoading } = useUser();
   const { toast } = useToast();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
-  const [members, setMembers] = useState<MemberWithProfile[]>([]);
+  const [allMembers, setAllMembers] = useState<MemberWithProfile[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState<'az' | 'za'>('az');
   const [filters, setFilters] = useState<MemberFiltersType>({});
+  const [membershipTypes, setMembershipTypes] = useState<MembershipTypeRecord[]>([]);
 
+  useEffect(() => {
+    if (organisation?.id) {
+      getMembershipTypes(organisation.id).then(({ data }) => {
+        setMembershipTypes(data ?? []);
+      });
+    }
+  }, [organisation?.id]);
+
+  // Fetch from DB only when org or filters change — NOT on search
   const fetchMembers = useCallback(async () => {
     if (!organisation?.id) return;
     setLoading(true);
@@ -36,10 +55,9 @@ export default function MembersPage() {
       .select('*, profile:profiles(*)', { count: 'exact' })
       .eq('organisation_id', organisation.id);
 
-    if (search) {
-      query = query.or(
-        `profile.first_name.ilike.%${search}%,profile.last_name.ilike.%${search}%,profile.email.ilike.%${search}%`
-      );
+    // Non-admins only see active members
+    if (!isAdmin) {
+      query = query.eq('membership_status', 'active');
     }
 
     if (filters.membershipType && filters.membershipType.length > 0) {
@@ -62,7 +80,7 @@ export default function MembersPage() {
           teamMemberIds.map((tm) => tm.member_id)
         );
       } else {
-        setMembers([]);
+        setAllMembers([]);
         setTotalCount(0);
         setLoading(false);
         return;
@@ -76,17 +94,47 @@ export default function MembersPage() {
     if (error) {
       toast({ title: 'Error loading members', description: error.message, variant: 'destructive' });
     } else {
-      setMembers((data as unknown as MemberWithProfile[]) ?? []);
+      setAllMembers((data as unknown as MemberWithProfile[]) ?? []);
       setTotalCount(count ?? 0);
     }
     setLoading(false);
-  }, [organisation?.id, search, filters, toast]);
+  }, [organisation?.id, filters, toast]);
 
   useEffect(() => {
     if (!orgLoading && organisation?.id) {
       fetchMembers();
     }
   }, [orgLoading, organisation?.id, fetchMembers]);
+
+  // Client-side filtering — instant, no loading state
+  const members = allMembers.filter((m) => {
+    const p = m.profile;
+    if (!p) return false;
+
+    // Text search
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        p.first_name?.toLowerCase().includes(q) ||
+        p.last_name?.toLowerCase().includes(q) ||
+        p.email?.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+
+    // Age group (adult = 18+, child = under 18)
+    if (filters.ageGroup && p.date_of_birth) {
+      const age = calculateAge(p.date_of_birth);
+      if (filters.ageGroup === 'adult' && age < 18) return false;
+      if (filters.ageGroup === 'child' && age >= 18) return false;
+    }
+
+    // Gender
+    if (filters.gender && p.gender) {
+      if (p.gender !== filters.gender) return false;
+    }
+
+    return true;
+  });
 
   async function handleDelete(id: string) {
     const supabase = createClient();
@@ -117,17 +165,83 @@ export default function MembersPage() {
     exportMembersCsv(members);
   }
 
-  if (orgLoading) {
+  if (orgLoading || userLoading) {
     return <PageSkeleton />;
   }
 
+  // ── Non-admin: simple member directory ──
+  if (!isAdmin) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Members"
+          badge={
+            <Badge variant="secondary" className="text-sm">
+              {search ? members.length : totalCount}
+            </Badge>
+          }
+        />
+
+        <div className="flex items-center gap-2">
+          <SearchInput
+            placeholder="Search members..."
+            onSearch={setSearch}
+            className="w-full sm:max-w-xs"
+          />
+          <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'az' | 'za')}>
+            <SelectTrigger className="h-9 w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="az">A – Z</SelectItem>
+              <SelectItem value="za">Z – A</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-md bg-muted" />
+            ))}
+          </div>
+        ) : members.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No members found"
+            description={search ? 'Try a different search.' : 'No active members yet.'}
+          />
+        ) : (
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {[...members].sort((a, b) => {
+              const nameA = `${a.profile.first_name} ${a.profile.last_name}`.toLowerCase();
+              const nameB = `${b.profile.first_name} ${b.profile.last_name}`.toLowerCase();
+              return sortOrder === 'az' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+            }).map((m) => (
+              <div key={m.id} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/50">
+                <AvatarWithName
+                  firstName={m.profile.first_name}
+                  lastName={m.profile.last_name}
+                  avatarUrl={m.profile.avatar_url}
+                  size="sm"
+                  subtitle={m.membership_type.charAt(0).toUpperCase() + m.membership_type.slice(1)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Admin: full member management ──
   return (
     <div className="space-y-6">
       <PageHeader
         title="Members"
         badge={
           <Badge variant="secondary" className="text-sm">
-            {totalCount}
+            {search || filters.ageGroup || filters.gender ? members.length : totalCount}
           </Badge>
         }
         actions={
@@ -158,7 +272,7 @@ export default function MembersPage() {
           onSearch={setSearch}
           className="w-full sm:max-w-xs"
         />
-        <MemberFilters filters={filters} onFiltersChange={setFilters} />
+        <MemberFilters filters={filters} onFiltersChange={setFilters} membershipTypes={membershipTypes} />
       </div>
 
       {loading ? (
