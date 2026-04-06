@@ -14,6 +14,8 @@ export interface MemberFilters {
   membershipType?: string[];
   membershipStatus?: string[];
   teamId?: string;
+  ageGroup?: 'all' | 'adult' | 'child';
+  gender?: string;
 }
 
 export interface MemberFormData {

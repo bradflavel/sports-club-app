@@ -6,6 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
 import { useUser } from '@/hooks/use-user';
 import { createClient } from '@/lib/supabase/client';
@@ -21,6 +28,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
@@ -37,6 +45,7 @@ export default function SettingsPage() {
       setEmail(profile.email);
       setPhone(profile.phone || '');
       setDob(profile.date_of_birth || '');
+      setGender(profile.gender || '');
       setEmergencyName(profile.emergency_contact_name || '');
       setEmergencyPhone(profile.emergency_contact_phone || '');
     }
@@ -53,6 +62,7 @@ export default function SettingsPage() {
         last_name: lastName,
         phone: phone || null,
         date_of_birth: dob || null,
+        gender: gender || null,
         emergency_contact_name: emergencyName || null,
         emergency_contact_phone: emergencyPhone || null,
       })
@@ -120,6 +130,19 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label>Date of Birth</Label>
                 <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <h4 className="text-sm font-semibold text-muted-foreground pt-2">Emergency Contact</h4>

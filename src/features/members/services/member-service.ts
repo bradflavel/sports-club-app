@@ -25,11 +25,8 @@ export async function getMembers(
     .select('*, profile:profiles(*)', { count: 'exact' })
     .eq('organisation_id', orgId);
 
-  if (filters?.search) {
-    query = query.or(
-      `profile.first_name.ilike.%${filters.search}%,profile.last_name.ilike.%${filters.search}%,profile.email.ilike.%${filters.search}%`
-    );
-  }
+  // Search is applied after fetch — PostgREST .or() on joined tables nulls the join
+  const searchTerm = filters?.search;
 
   if (filters?.membershipType && filters.membershipType.length > 0) {
     query = query.in('membership_type', filters.membershipType as MembershipType[]);
@@ -65,7 +62,21 @@ export async function getMembers(
 
   const { data, error, count } = await query;
 
-  return { data: data as unknown as MemberWithProfile[] | null, count, error };
+  let results = data as unknown as MemberWithProfile[] | null;
+  if (results && searchTerm) {
+    const q = searchTerm.toLowerCase();
+    results = results.filter((m) => {
+      const p = m.profile;
+      if (!p) return false;
+      return (
+        p.first_name?.toLowerCase().includes(q) ||
+        p.last_name?.toLowerCase().includes(q) ||
+        p.email?.toLowerCase().includes(q)
+      );
+    });
+  }
+
+  return { data: results, count: searchTerm ? results?.length ?? 0 : count, error };
 }
 
 export async function getMemberById(id: string) {

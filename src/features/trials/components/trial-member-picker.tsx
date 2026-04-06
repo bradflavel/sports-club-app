@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Search, UserPlus, X } from 'lucide-react';
+import { Filter, Loader2, Plus, Search, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -13,6 +14,27 @@ import {
 } from '@/components/ui/dialog';
 import { createClient } from '@/lib/supabase/client';
 import type { MemberWithProfile, CompetitionDivision } from '@/lib/supabase/database.types';
+
+function calcAge(dob: string): number {
+  const birth = new Date(dob + 'T00:00:00');
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+function formatDob(dob: string): string {
+  const [y, m, d] = dob.split('-');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
+}
+
+/** Parse an age group string like "U18" or "Under 16" into a max age number */
+function parseAgeLimit(ageGroup: string): number | null {
+  const match = ageGroup.match(/(?:u|under\s*)(\d+)/i);
+  return match ? parseInt(match[1]) : null;
+}
 
 interface TrialMemberPickerProps {
   activityId: string;
@@ -193,8 +215,13 @@ function AddMembersDialog({
   const [allMembers, setAllMembers] = useState<MemberWithProfile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const [filterByConstraints, setFilterByConstraints] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+
+  const hasConstraints = !!(division && (
+    (division.gender && division.gender !== 'open') || division.age_group
+  ));
 
   const fetchMembers = useCallback(async () => {
     setFetching(true);
@@ -221,6 +248,22 @@ function AddMembersDialog({
     if (existingMemberIds.includes(m.id)) return false;
     const name = `${m.profile.first_name} ${m.profile.last_name}`.toLowerCase();
     if (search && !name.includes(search.toLowerCase())) return false;
+
+    if (filterByConstraints && division) {
+      // Gender filter
+      if (division.gender && division.gender !== 'open' && division.gender !== 'mixed') {
+        if (m.profile.gender && m.profile.gender !== division.gender) return false;
+      }
+      // Age filter (e.g. "U18" means must be under 18)
+      if (division.age_group) {
+        const ageLimit = parseAgeLimit(division.age_group);
+        if (ageLimit && m.profile.date_of_birth) {
+          const age = calcAge(m.profile.date_of_birth);
+          if (age >= ageLimit) return false;
+        }
+      }
+    }
+
     return true;
   });
 
@@ -280,6 +323,17 @@ function AddMembersDialog({
               className="pl-9 h-9"
             />
           </div>
+          {hasConstraints && (
+            <Button
+              size="sm"
+              variant={filterByConstraints ? 'default' : 'outline'}
+              className="h-9 gap-1.5 text-xs shrink-0"
+              onClick={() => setFilterByConstraints(!filterByConstraints)}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              {filterByConstraints ? 'Filtered' : 'Filter by division'}
+            </Button>
+          )}
           <span className="text-xs text-muted-foreground whitespace-nowrap">
             {selected.size} selected
           </span>
@@ -301,34 +355,49 @@ function AddMembersDialog({
                     />
                   </th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Email</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Gender</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Date of Birth</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
                       No available members found
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((m) => (
-                    <tr
-                      key={m.id}
-                      className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
-                      onClick={() => toggleMember(m.id)}
-                    >
-                      <td className="px-3 py-1.5">
-                        <Checkbox checked={selected.has(m.id)} />
-                      </td>
-                      <td className="px-3 py-1.5 font-medium">
-                        {m.profile.first_name} {m.profile.last_name}
-                      </td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{m.profile.email}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground capitalize">{m.membership_type}</td>
-                    </tr>
-                  ))
+                  filtered.map((m) => {
+                    const dob = m.profile.date_of_birth;
+                    const age = dob ? calcAge(dob) : null;
+                    return (
+                      <tr
+                        key={m.id}
+                        className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => toggleMember(m.id)}
+                      >
+                        <td className="px-3 py-1.5">
+                          <Checkbox checked={selected.has(m.id)} />
+                        </td>
+                        <td className="px-3 py-1.5 font-medium">
+                          {m.profile.first_name} {m.profile.last_name}
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground capitalize">
+                          {m.profile.gender ?? '—'}
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground">
+                          {dob ? (
+                            <>
+                              {formatDob(dob)}{' '}
+                              <span className="text-xs">({age})</span>
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground capitalize">{m.membership_type}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

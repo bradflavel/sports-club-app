@@ -97,16 +97,24 @@ export async function searchAdultMembers(orgId: string, query: string) {
     .from('members')
     .select('*, profile:profiles(*)')
     .eq('organisation_id', orgId)
-    .or(
-      `profile.first_name.ilike.%${query}%,profile.last_name.ilike.%${query}%,profile.email.ilike.%${query}%`
-    )
-    .limit(20);
+    .limit(100);
 
   if (error || !data) return { data: data as unknown as MemberWithProfile[] | null, error };
 
-  // Filter in JS: include members whose DOB indicates adult, or who have no DOB (assume adult)
   const members = data as unknown as MemberWithProfile[];
-  const adults = members.filter(
+
+  // Filter by search query on profile fields, then by adult status
+  const q = query.toLowerCase();
+  const matched = members.filter((m) => {
+    if (!m.profile) return false;
+    return (
+      m.profile.first_name?.toLowerCase().includes(q) ||
+      m.profile.last_name?.toLowerCase().includes(q) ||
+      m.profile.email?.toLowerCase().includes(q)
+    );
+  });
+
+  const adults = matched.filter(
     (m) => !m.profile.date_of_birth || !isMinor(m.profile.date_of_birth)
   );
 

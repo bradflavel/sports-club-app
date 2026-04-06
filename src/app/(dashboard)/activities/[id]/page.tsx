@@ -81,6 +81,7 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
   const { toast } = useToast();
 
   const { profile } = useUser();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
   const [activity, setActivity] = useState<Activity | null>(null);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
   const [teams, setTeams] = useState<ActivityTeamWithDetails[]>([]);
@@ -107,6 +108,7 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
   const [editTrialDateId, setEditTrialDateId] = useState<string | null>(null);
   const [trialsTab, setTrialsTab] = useState('overview');
   const [attendanceEventFilter, setAttendanceEventFilter] = useState<string | null>(null);
+  const [feeEditOpen, setFeeEditOpen] = useState(false);
 
   const fetchActivity = useCallback(async () => {
     const { data, error } = await getActivityById(activityId);
@@ -166,11 +168,28 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
     setVenues((data ?? []) as ClubVenue[]);
   }, [organisation?.id]);
 
+  /** Sync activity start_date/end_date from its events */
+  const syncActivityDates = useCallback(async (id: string, events: ActivityEvent[]) => {
+    if (events.length === 0) return;
+    const sorted = [...events].sort((a, b) => a.date_time.localeCompare(b.date_time));
+    const earliest = sorted[0].date_time.split('T')[0];
+    const latest = sorted[sorted.length - 1].date_time.split('T')[0];
+    const supabase = createClient();
+    await supabase
+      .from('activities')
+      .update({ start_date: earliest, end_date: latest, updated_at: new Date().toISOString() })
+      .eq('id', id);
+  }, []);
+
   const fetchTrialData = useCallback(async (act: Activity) => {
-    if (act.activity_type !== 'trials') return;
+    if (act.activity_type !== 'trials' && act.activity_type !== 'training_session') return;
 
     const eventsResult = await getTrialEvents(act.id);
-    setTrialEvents(eventsResult.data ?? []);
+    const evts = eventsResult.data ?? [];
+    setTrialEvents(evts);
+
+    // Sync dates so the list page shows them
+    await syncActivityDates(act.id, evts);
 
     if (act.competition_division_id) {
       const divResult = await getTrialDivision(act.competition_division_id);
@@ -178,7 +197,7 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
     } else {
       setTrialDivision(null);
     }
-  }, []);
+  }, [syncActivityDates]);
 
   useEffect(() => {
     if (!orgLoading) {
@@ -304,21 +323,23 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
           <ArrowLeft className="h-4 w-4" />
           {backLabel}
         </Button>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       <ActivityDetailHeader activity={activity} />
@@ -360,45 +381,113 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
           </TabsList>
 
           {/* Trials Overview */}
-          <TabsContent value="overview" className="mt-3 space-y-3">
-            <Card>
-              <CardContent className="py-3">
-                <dl className="grid gap-2 text-sm sm:grid-cols-3">
+          <TabsContent value="overview" className="mt-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {/* Col 1: Competition & Division */}
+              <Card>
+                <CardContent className="py-3 space-y-3">
                   {activity.parent_activity_id && (
                     <div>
-                      <dt className="text-muted-foreground text-xs">Competition</dt>
-                      <dd>
-                        <Button
-                          variant="link"
-                          className="h-auto p-0 text-sm"
-                          onClick={() => {
-                            if (parentActivity) router.push(getActivityPath(parentActivity.activity_type, parentActivity.slug));
-                          }}
-                        >
-                          {allActivities.find((a) => a.id === activity.parent_activity_id)?.name ?? 'Unknown'}
-                        </Button>
-                      </dd>
+                      <p className="text-muted-foreground text-xs">Competition</p>
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-sm"
+                        onClick={() => {
+                          if (parentActivity) router.push(getActivityPath(parentActivity.activity_type, parentActivity.slug));
+                        }}
+                      >
+                        {allActivities.find((a) => a.id === activity.parent_activity_id)?.name ?? 'Unknown'}
+                      </Button>
                     </div>
                   )}
                   {trialDivision && (
                     <div>
-                      <dt className="text-muted-foreground text-xs">Division</dt>
-                      <dd className="font-medium">{trialDivision.name}</dd>
+                      <p className="text-muted-foreground text-xs">Division</p>
+                      <p className="text-sm font-medium">{trialDivision.name}</p>
                     </div>
                   )}
-                  <div>
-                    <dt className="text-muted-foreground text-xs">Sessions</dt>
-                    <dd className="font-medium">{trialEvents.length}</dd>
-                  </div>
-                </dl>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-sm">Fee Configuration</CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3">
+              {/* Col 2: Fee */}
+              <Card>
+                <CardContent className="py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-muted-foreground text-xs">Fee</p>
+                    {isAdmin && (
+                      <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setFeeEditOpen(true)}>
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-medium">
+                      {activity.trial_fee_amount_cents && activity.trial_fee_amount_cents > 0
+                        ? `$${(activity.trial_fee_amount_cents / 100).toFixed(2)}`
+                        : 'Not set'}
+                    </p>
+                    {activity.trial_fee_type && (
+                      <p className="text-xs text-muted-foreground">
+                        {activity.trial_fee_type === 'per_trial' ? 'Per session' : 'One-time'}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Col 3: Sessions */}
+              <Card>
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Sessions ({trialEvents.length})</CardTitle>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setTrialsTab('trial-dates')}>
+                      Manage
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  {trialEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No sessions yet</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {trialEvents.map((event) => {
+                        const clean = event.date_time.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '');
+                        const [datePart, timePart] = clean.split('T');
+                        const [y, mo, d] = datePart.split('-').map(Number);
+                        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                        const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                        const dow = dows[new Date(y, mo - 1, d, 12).getDay()];
+                        let timeStr = '';
+                        if (timePart) {
+                          const [h, m] = timePart.split(':').map(Number);
+                          timeStr = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                        }
+                        let endStr = '';
+                        if (event.end_time) {
+                          const et = event.end_time.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '').split('T')[1];
+                          if (et) {
+                            const [eh, em] = et.split(':').map(Number);
+                            endStr = ` — ${eh % 12 || 12}:${String(em).padStart(2, '0')} ${eh >= 12 ? 'PM' : 'AM'}`;
+                          }
+                        }
+                        return (
+                          <p key={event.id} className="text-sm py-0.5">
+                            {dow} {d} {months[mo - 1]}, {timeStr}{endStr}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Fee edit dialog */}
+            <Dialog open={feeEditOpen} onOpenChange={setFeeEditOpen}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Edit Fee</DialogTitle>
+                </DialogHeader>
                 <TrialFeeConfig
                   initialFeeType={activity.trial_fee_type}
                   initialFeeAmountCents={activity.trial_fee_amount_cents}
@@ -407,16 +496,17 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
                     setSubmitting(true);
                     const { error } = await updateTrialFeeConfig(activityId, config);
                     if (error) {
-                      toast({ title: 'Error saving fee config', variant: 'destructive' });
+                      toast({ title: 'Error saving fee', variant: 'destructive' });
                     } else {
-                      toast({ title: 'Fee configuration saved' });
+                      toast({ title: 'Fee updated' });
+                      setFeeEditOpen(false);
                       fetchActivity();
                     }
                     setSubmitting(false);
                   }}
                 />
-              </CardContent>
-            </Card>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Members Tab */}
@@ -432,20 +522,22 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
 
           {/* Trial Dates */}
           <TabsContent value="trial-dates" className="mt-3 space-y-2">
-            <div className="flex items-center justify-end">
-              <Button size="sm" className="h-7 text-xs gap-1" onClick={() => setAddTrialDateOpen(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                Add Trial Date
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex items-center justify-end">
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => setAddTrialDateOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Trial Date
+                </Button>
+              </div>
+            )}
 
             {trialEvents.length === 0 ? (
               <EmptyState
                 icon={Calendar}
                 title="No trial dates yet"
-                description="Add trial dates for this division."
-                actionLabel="Add Trial Date"
-                onAction={() => setAddTrialDateOpen(true)}
+                description={isAdmin ? 'Add trial dates for this division.' : 'No trial dates have been set yet.'}
+                actionLabel={isAdmin ? 'Add Trial Date' : undefined}
+                onAction={isAdmin ? () => setAddTrialDateOpen(true) : undefined}
               />
             ) : (
               <div className="space-y-1.5">
@@ -453,12 +545,12 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
                   <TrialDateCard
                     key={event.id}
                     event={event}
-                    onEdit={(eventId) => setEditTrialDateId(eventId)}
-                    onDelete={async (eventId) => {
+                    onEdit={isAdmin ? (eventId) => setEditTrialDateId(eventId) : undefined}
+                    onDelete={isAdmin ? async (eventId) => {
                       const supabase = createClient();
                       await supabase.from('activity_events').delete().eq('id', eventId);
                       if (activity) fetchTrialData(activity);
-                    }}
+                    } : undefined}
                     onViewAttendance={(eventId) => {
                       setAttendanceEventFilter(eventId);
                       setTrialsTab('attendance');
@@ -524,7 +616,7 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
                     Fee: ${((activity.trial_fee_amount_cents ?? 0) / 100).toFixed(2)}{' '}
                     ({activity.trial_fee_type === 'per_trial' ? 'per session' : 'one-time'})
                   </div>
-                  <Button
+                  {isAdmin && <Button
                     size="sm"
                     variant="outline"
                     className="gap-2"
@@ -570,7 +662,7 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                     <DollarSign className="h-4 w-4" />
                     Generate Invoices
-                  </Button>
+                  </Button>}
                 </div>
                 <TrialPaymentTable activityId={activityId} orgId={organisation?.id ?? ''} />
               </>
@@ -718,22 +810,24 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
 
           {/* Teams Tab */}
           <TabsContent value="teams" className="mt-4 space-y-4">
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setCloneTeamOpen(true)}>
-                Clone from Activity
-              </Button>
-              <Button size="sm" className="gap-2" onClick={() => setCreateTeamOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Add Team
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCloneTeamOpen(true)}>
+                  Clone from Activity
+                </Button>
+                <Button size="sm" className="gap-2" onClick={() => setCreateTeamOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Add Team
+                </Button>
+              </div>
+            )}
             {teams.length === 0 ? (
               <EmptyState
                 icon={Users}
                 title="No teams yet"
-                description="Add a team to get started."
-                actionLabel="Add Team"
-                onAction={() => setCreateTeamOpen(true)}
+                description={isAdmin ? 'Add a team to get started.' : 'No teams have been added yet.'}
+                actionLabel={isAdmin ? 'Add Team' : undefined}
+                onAction={isAdmin ? () => setCreateTeamOpen(true) : undefined}
               />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -763,10 +857,12 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
                   Calendar
                 </Button>
               </div>
-              <Button size="sm" className="gap-2" onClick={() => setCreateEventOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Add Event
-              </Button>
+              {isAdmin && (
+                <Button size="sm" className="gap-2" onClick={() => setCreateEventOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Add Event
+                </Button>
+              )}
             </div>
             {scheduleView === 'list' ? (
               <EventList

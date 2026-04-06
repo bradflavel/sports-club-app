@@ -22,7 +22,6 @@ import type { Team, MembershipTypeRecord } from '@/lib/supabase/database.types';
 const FALLBACK_MEMBERSHIP_TYPES = [
   { value: 'senior', label: 'Senior' },
   { value: 'junior', label: 'Junior' },
-  { value: 'social', label: 'Social' },
   { value: 'life', label: 'Life' },
   { value: 'volunteer', label: 'Volunteer' },
 ];
@@ -31,7 +30,6 @@ const MEMBERSHIP_STATUSES = [
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
   { value: 'suspended', label: 'Suspended' },
-  { value: 'pending', label: 'Pending' },
 ];
 
 interface MemberFiltersProps {
@@ -74,8 +72,17 @@ export function MemberFilters({ filters, onFiltersChange, membershipTypes }: Mem
     onFiltersChange({ ...filters, teamId: value === 'all' ? undefined : value });
   }
 
+  function handleAgeGroupChange(value: string) {
+    onFiltersChange({ ...filters, ageGroup: value === 'all' ? undefined : value as 'adult' | 'child' });
+  }
+
+  function handleGenderChange(value: string) {
+    onFiltersChange({ ...filters, gender: value === 'all' ? undefined : value });
+  }
+
   const activeTypeCount = filters.membershipType?.length ?? 0;
   const activeStatusCount = filters.membershipStatus?.length ?? 0;
+  const hasAnyFilter = activeTypeCount > 0 || activeStatusCount > 0 || filters.teamId || filters.ageGroup || filters.gender;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -96,7 +103,7 @@ export function MemberFilters({ filters, onFiltersChange, membershipTypes }: Mem
         </PopoverTrigger>
         <PopoverContent className="w-48 p-2" align="start">
           <div className="space-y-1">
-            {(membershipTypes
+            {(membershipTypes && membershipTypes.length > 0
               ? membershipTypes.map((mt) => ({ value: mt.id, label: mt.name }))
               : FALLBACK_MEMBERSHIP_TYPES
             ).map((type) => {
@@ -192,6 +199,30 @@ export function MemberFilters({ filters, onFiltersChange, membershipTypes }: Mem
         </PopoverContent>
       </Popover>
 
+      {/* Age group */}
+      <Select value={filters.ageGroup ?? 'all'} onValueChange={handleAgeGroupChange}>
+        <SelectTrigger className={cn('h-9 w-[120px]', filters.ageGroup && 'border-primary')}>
+          <SelectValue placeholder="All Ages" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Ages</SelectItem>
+          <SelectItem value="adult">Adults</SelectItem>
+          <SelectItem value="child">Children</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {/* Gender */}
+      <Select value={filters.gender ?? 'all'} onValueChange={handleGenderChange}>
+        <SelectTrigger className={cn('h-9 w-[120px]', filters.gender && 'border-primary')}>
+          <SelectValue placeholder="All Genders" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Genders</SelectItem>
+          <SelectItem value="male">Male</SelectItem>
+          <SelectItem value="female">Female</SelectItem>
+        </SelectContent>
+      </Select>
+
       {/* Team dropdown */}
       <Select value={filters.teamId ?? 'all'} onValueChange={handleTeamChange}>
         <SelectTrigger className={cn('h-9 w-[160px]', filters.teamId && 'border-primary')}>
@@ -208,13 +239,19 @@ export function MemberFilters({ filters, onFiltersChange, membershipTypes }: Mem
       </Select>
 
       {/* Clear all */}
-      {(activeTypeCount > 0 || activeStatusCount > 0 || filters.teamId) && (
+      {hasAnyFilter && (
         <Button
           variant="ghost"
           size="sm"
           className="h-9 text-muted-foreground"
           onClick={() =>
-            onFiltersChange({ membershipType: undefined, membershipStatus: undefined, teamId: undefined })
+            onFiltersChange({
+              membershipType: undefined,
+              membershipStatus: undefined,
+              teamId: undefined,
+              ageGroup: undefined,
+              gender: undefined,
+            })
           }
         >
           Clear all
