@@ -8,8 +8,6 @@ export const activityTeamSchema = z.object({
   managerId: z.string().optional(),
   maxPlayers: z.number().min(1, 'Max players must be at least 1'),
   isOwnTeam: z.boolean(),
-  poolNumber: z.number().optional(),
-  seedNumber: z.number().optional(),
 });
 
 export const addPlayerSchema = z.object({

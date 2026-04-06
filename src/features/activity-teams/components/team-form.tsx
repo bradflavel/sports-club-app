@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { activityTeamSchema } from '@/features/activity-teams/schemas/activity-team-schemas';
 import type { ActivityTeamInput } from '@/features/activity-teams/schemas/activity-team-schemas';
 import type { Profile } from '@/features/activity-teams/types/activity-team-types';
+import type { CompetitionDivision } from '@/lib/supabase/database.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ interface ActivityTeamFormProps {
   loading?: boolean;
   profiles?: Profile[];
   showOwnTeamToggle?: boolean;
+  divisions?: CompetitionDivision[];
 }
 
 const NONE_VALUE = '__none__';
@@ -34,6 +36,7 @@ export function ActivityTeamForm({
   loading = false,
   profiles = [],
   showOwnTeamToggle = false,
+  divisions = [],
 }: ActivityTeamFormProps) {
   const {
     register,
@@ -56,6 +59,12 @@ export function ActivityTeamForm({
   const coachId = watch('coachId');
   const managerId = watch('managerId');
   const isOwnTeam = watch('isOwnTeam');
+  const currentDivision = watch('division');
+
+  const hasDivisions = divisions.length > 0;
+  const selectedDiv = hasDivisions
+    ? divisions.find((d) => d.name === currentDivision)
+    : null;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -78,11 +87,41 @@ export function ActivityTeamForm({
       {/* Division */}
       <div className="space-y-1.5">
         <Label htmlFor="division">Division</Label>
-        <Input
-          id="division"
-          {...register('division')}
-          placeholder="e.g. Premier League"
-        />
+        {hasDivisions ? (
+          <Select
+            value={currentDivision ?? ''}
+            onValueChange={(val) => {
+              const divName = val === NONE_VALUE ? '' : val;
+              setValue('division', divName, { shouldValidate: true });
+              // Auto-populate age group from division
+              const div = divisions.find((d) => d.name === divName);
+              if (div?.age_group) {
+                setValue('ageGroup', div.age_group, { shouldValidate: true });
+              } else {
+                setValue('ageGroup', '', { shouldValidate: true });
+              }
+            }}
+          >
+            <SelectTrigger id="division">
+              <SelectValue placeholder="Select division" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE_VALUE}>No division</SelectItem>
+              {divisions.map((d) => (
+                <SelectItem key={d.id} value={d.name}>
+                  {d.name}
+                  {d.age_group ? ` (${d.age_group})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input
+            id="division"
+            {...register('division')}
+            placeholder="e.g. Premier League"
+          />
+        )}
       </div>
 
       {/* Age Group */}
@@ -92,6 +131,8 @@ export function ActivityTeamForm({
           id="ageGroup"
           {...register('ageGroup')}
           placeholder="e.g. Under 18, Open Age"
+          readOnly={!!(hasDivisions && currentDivision)}
+          className={hasDivisions && currentDivision ? 'bg-muted' : ''}
         />
       </div>
 
@@ -175,30 +216,6 @@ export function ActivityTeamForm({
           />
         </div>
       )}
-
-      {/* Pool Number */}
-      <div className="space-y-1.5">
-        <Label htmlFor="poolNumber">Pool Number</Label>
-        <Input
-          id="poolNumber"
-          type="number"
-          min={1}
-          {...register('poolNumber', { valueAsNumber: true })}
-          placeholder="e.g. 1"
-        />
-      </div>
-
-      {/* Seed Number */}
-      <div className="space-y-1.5">
-        <Label htmlFor="seedNumber">Seed Number</Label>
-        <Input
-          id="seedNumber"
-          type="number"
-          min={1}
-          {...register('seedNumber', { valueAsNumber: true })}
-          placeholder="e.g. 1"
-        />
-      </div>
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="submit" disabled={loading}>

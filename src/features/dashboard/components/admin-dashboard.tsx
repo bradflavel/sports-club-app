@@ -139,7 +139,7 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
             <Plus className="mr-1.5 h-4 w-4" />
             Add Member
           </Button>
-          <Button size="sm" variant="outline" onClick={() => router.push('/activities')}>
+          <Button size="sm" variant="outline" onClick={() => router.push('/competitions')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Create Event
           </Button>

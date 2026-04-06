@@ -70,6 +70,7 @@ function getDefaultDisplayOrder(activityType: ActivityType): number {
     tournament: 1,
     training_session: 2,
     training_camp: 3,
+    trials: 4,
   };
   return orderMap[activityType];
 }

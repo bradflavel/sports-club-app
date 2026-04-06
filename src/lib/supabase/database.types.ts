@@ -27,13 +27,14 @@ export type PaymentType =
   | 'fine'
   | 'merchandise'
   | 'event'
+  | 'trial_fee'
   | 'other';
 export type PaymentStatus = 'pending' | 'paid' | 'overdue' | 'cancelled' | 'refunded';
 export type DocumentCategory = 'policy' | 'minutes' | 'report' | 'form' | 'constitution' | 'other';
 export type GuardianRelationship = 'parent' | 'grandparent' | 'legal_guardian' | 'other';
 
 // Activity system types
-export type ActivityType = 'competition' | 'tournament' | 'training_session' | 'training_camp';
+export type ActivityType = 'competition' | 'tournament' | 'training_session' | 'training_camp' | 'trials';
 export type ParticipationMode = 'participant' | 'organiser';
 export type EventStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'postponed' | 'bye';
 export type AttendanceStatus = 'attending' | 'not_attending' | 'maybe' | 'attended' | 'absent' | 'late';
@@ -327,6 +328,24 @@ export interface MemberGuardianWithDetails extends MemberGuardian {
   minor: MemberWithProfile;
 }
 
+export interface CompetitionDivision {
+  id: string;
+  activity_id: string;
+  name: string;
+  max_teams: number | null;
+  age_group: string | null;
+  gender: string | null;
+  display_order: number;
+  created_at: string;
+}
+
+export interface TrialEventDivision {
+  id: string;
+  event_id: string;
+  division_id: string;
+  created_at: string;
+}
+
 // Activity system interfaces
 export interface OrganisationModule {
   id: string;
@@ -344,7 +363,7 @@ export interface Activity {
   participation_mode: ParticipationMode;
   name: string;
   description: string | null;
-  start_date: string;
+  start_date: string | null;
   end_date: string | null;
   is_current: boolean;
   total_rounds: number | null;
@@ -355,6 +374,29 @@ export interface Activity {
   default_start_time: string | null;
   default_duration_minutes: number | null;
   parent_activity_id: string | null;
+  // Competition-specific (migration 00016)
+  host_name?: string | null;
+  host_type?: string | null;
+  registration_opens?: string | null;
+  registration_closes?: string | null;
+  first_round_date?: string | null;
+  finals_start_date?: string | null;
+  schedule_frequency?: string | null;
+  has_byes?: boolean | null;
+  finals_description?: string | null;
+  finals_weeks?: number | null;
+  trials_required?: boolean | null;
+  trial_date?: string | null;
+  training_required?: boolean | null;
+  training_details?: string | null;
+  round_dates?: string[] | null;
+  // Trials fee config (migration 00017)
+  trial_fee_type?: string | null;
+  trial_fee_amount_cents?: number | null;
+  // Per-division trials link (migration 00018)
+  competition_division_id?: string | null;
+  // URL slug (migration 00019)
+  slug: string;
   created_at: string;
   updated_at: string;
 }
@@ -590,6 +632,18 @@ export interface Database {
         Row: ActivityStanding & Record<string, unknown>;
         Insert: Omit<ActivityStanding, 'id'> & Record<string, unknown>;
         Update: Partial<Omit<ActivityStanding, 'id'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      competition_divisions: {
+        Row: CompetitionDivision & Record<string, unknown>;
+        Insert: Omit<CompetitionDivision, 'id' | 'created_at'> & Record<string, unknown>;
+        Update: Partial<Omit<CompetitionDivision, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      trial_event_divisions: {
+        Row: TrialEventDivision & Record<string, unknown>;
+        Insert: Omit<TrialEventDivision, 'id' | 'created_at'> & Record<string, unknown>;
+        Update: Partial<Omit<TrialEventDivision, 'id' | 'created_at'>> & Record<string, unknown>;
         Relationships: [];
       };
       membership_types: {

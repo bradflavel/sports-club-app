@@ -59,6 +59,18 @@ export async function getActivityById(id: string) {
   return { data: data as Activity | null, error };
 }
 
+export async function getActivityBySlug(orgId: string, slug: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*')
+    .eq('organisation_id', orgId)
+    .eq('slug', slug)
+    .single();
+
+  return { data: data as Activity | null, error };
+}
+
 export async function createActivity(
   data: Omit<Activity, 'id' | 'created_at' | 'updated_at'>
 ) {

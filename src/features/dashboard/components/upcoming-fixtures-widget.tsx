@@ -53,7 +53,7 @@ export function UpcomingEventsWidget({ events, loading = false, sportType }: Upc
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h3 className="font-semibold">{heading}</h3>
         <Link
-          href="/activities"
+          href="/competitions"
           className="flex items-center gap-1 text-xs text-primary hover:underline"
         >
           View all <ArrowRight className="h-3 w-3" />

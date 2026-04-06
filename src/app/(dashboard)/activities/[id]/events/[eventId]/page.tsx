@@ -22,6 +22,7 @@ import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDateTime, daysUntil } from '@/lib/format';
 import { SPORT_CONFIGS, type SportType } from '@/lib/constants';
+import { getActivityPath } from '@/lib/utils';
 import type { ActivityEventWithTeams, ActivityTeam, Activity } from '@/lib/supabase/database.types';
 import type { EventInput } from '@/features/activity-events/schemas/event-schemas';
 import type { TournamentStage } from '@/lib/supabase/database.types';
@@ -63,6 +64,8 @@ export default function EventDetailPage() {
   const sportType = organisation?.sport_type as SportType | undefined;
   const matchLabel = sportType ? (SPORT_CONFIGS[sportType]?.matchLabel ?? 'Match') : 'Match';
 
+  const backPath = activity ? getActivityPath(activity.activity_type, activity.slug) : '/dashboard';
+
   const fetchEvent = useCallback(async () => {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -73,12 +76,13 @@ export default function EventDetailPage() {
 
     if (error || !data) {
       toast({ title: 'Event not found', variant: 'destructive' });
-      router.push(`/activities/${activityId}`);
+      router.push('/dashboard');
       return;
     }
-    setEvent(data as unknown as ActivityEventWithTeams);
-    setActivity((data as unknown as ActivityEventWithTeams).activity ?? null);
-  }, [eventId, activityId, toast, router]);
+    const evt = data as unknown as ActivityEventWithTeams;
+    setEvent(evt);
+    setActivity(evt.activity ?? null);
+  }, [eventId, toast, router]);
 
   const fetchTeams = useCallback(async () => {
     const supabase = createClient();
@@ -101,16 +105,9 @@ export default function EventDetailPage() {
     const supabase = createClient();
     const { error } = await supabase
       .from('activity_events')
-      .update({
-        home_score: homeScore,
-        away_score: awayScore,
-        status: 'completed',
-        updated_at: new Date().toISOString(),
-      })
+      .update({ home_score: homeScore, away_score: awayScore, status: 'completed', updated_at: new Date().toISOString() })
       .eq('id', eventId);
-
     setSaving(false);
-
     if (error) {
       toast({ title: 'Error saving result', description: error.message, variant: 'destructive' });
     } else {
@@ -143,9 +140,7 @@ export default function EventDetailPage() {
         updated_at: new Date().toISOString(),
       })
       .eq('id', eventId);
-
     setSaving(false);
-
     if (error) {
       toast({ title: 'Error updating event', description: error.message, variant: 'destructive' });
     } else {
@@ -162,7 +157,6 @@ export default function EventDetailPage() {
       .from('activity_events')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('id', eventId);
-
     if (error) {
       toast({ title: 'Error cancelling event', description: error.message, variant: 'destructive' });
     } else {
@@ -173,16 +167,12 @@ export default function EventDetailPage() {
 
   async function handleDelete() {
     const supabase = createClient();
-    const { error } = await supabase
-      .from('activity_events')
-      .delete()
-      .eq('id', eventId);
-
+    const { error } = await supabase.from('activity_events').delete().eq('id', eventId);
     if (error) {
       toast({ title: 'Error deleting event', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Event deleted' });
-      router.push(`/activities/${activityId}`);
+      router.push(backPath);
     }
   }
 
@@ -194,159 +184,90 @@ export default function EventDetailPage() {
   const isCompleted = event.status === 'completed';
   const isScheduled = event.status === 'scheduled';
   const daysAway = isScheduled ? daysUntil(event.date_time) : null;
-
   const homeLabel = event.home_team?.name ?? 'Home';
   const awayLabel = event.away_team?.name ?? event.opponent_name ?? 'Away';
-
   const activityType = activity?.activity_type ?? 'competition';
   const participationMode = activity?.participation_mode ?? 'participant';
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/activities/${activityId}`)}
-          className="gap-1"
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push(backPath)} className="gap-1">
           <ArrowLeft className="h-4 w-4" />
-          Back to Activity
+          Back
         </Button>
       </div>
 
-      {/* Main detail card */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold">
-                  {isMatch ? `${homeLabel} vs ${awayLabel}` : (event.title ?? 'Session')}
-                </h1>
-              </div>
+              <h1 className="text-2xl font-bold">
+                {isMatch ? `${homeLabel} vs ${awayLabel}` : (event.title ?? 'Session')}
+              </h1>
               <div className="flex flex-wrap gap-2">
                 {isMatch && event.is_home !== null && (
-                  <Badge variant={event.is_home ? 'default' : 'outline'}>
-                    {event.is_home ? 'Home' : 'Away'}
-                  </Badge>
+                  <Badge variant={event.is_home ? 'default' : 'outline'}>{event.is_home ? 'Home' : 'Away'}</Badge>
                 )}
-                <Badge variant={STATUS_VARIANTS[event.status] ?? 'secondary'}>
-                  {STATUS_LABELS[event.status] ?? event.status}
-                </Badge>
-                {event.round_number !== null && (
-                  <Badge variant="outline">Round {event.round_number}</Badge>
-                )}
-                {event.tournament_stage && (
-                  <Badge variant="outline" className="capitalize">
-                    {event.tournament_stage.replace(/_/g, ' ')}
-                  </Badge>
-                )}
-                {isMatch && (
-                  <Badge variant="outline">{matchLabel}</Badge>
-                )}
+                <Badge variant={STATUS_VARIANTS[event.status] ?? 'secondary'}>{STATUS_LABELS[event.status] ?? event.status}</Badge>
+                {event.round_number !== null && <Badge variant="outline">Round {event.round_number}</Badge>}
+                {event.tournament_stage && <Badge variant="outline" className="capitalize">{event.tournament_stage.replace(/_/g, ' ')}</Badge>}
+                {isMatch && <Badge variant="outline">{matchLabel}</Badge>}
               </div>
             </div>
-
             <div className="flex shrink-0 flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => setEditOpen(true)}
-              >
-                <Edit className="h-4 w-4" />
-                Edit
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
+                <Edit className="h-4 w-4" /> Edit
               </Button>
               {event.status !== 'cancelled' && event.status !== 'completed' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-destructive hover:text-destructive"
-                  onClick={handleCancel}
-                >
-                  <XCircle className="h-4 w-4" />
-                  Cancel
+                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleCancel}>
+                  <XCircle className="h-4 w-4" /> Cancel
                 </Button>
               )}
               {isMatch && (
                 <Button size="sm" className="gap-2" onClick={() => setScoreOpen(true)}>
-                  <Trophy className="h-4 w-4" />
-                  {isCompleted ? 'Edit Result' : 'Enter Result'}
+                  <Trophy className="h-4 w-4" /> {isCompleted ? 'Edit Result' : 'Enter Result'}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-destructive hover:text-destructive"
-                onClick={handleDelete}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
+              <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4" /> Delete
               </Button>
             </div>
           </div>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          {/* Score (if match + completed) */}
-          {isMatch &&
-            isCompleted &&
-            event.home_score !== null &&
-            event.away_score !== null && (
-              <div className="rounded-lg bg-muted p-6 text-center">
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Final Score
-                </p>
-                <div className="flex items-center justify-center gap-4">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">{homeLabel}</p>
-                    <p className="text-4xl font-bold">{event.home_score}</p>
-                  </div>
-                  <span className="text-2xl font-light text-muted-foreground">-</span>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">{awayLabel}</p>
-                    <p className="text-4xl font-bold">{event.away_score}</p>
-                  </div>
+          {isMatch && isCompleted && event.home_score !== null && event.away_score !== null && (
+            <div className="rounded-lg bg-muted p-6 text-center">
+              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Final Score</p>
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">{homeLabel}</p>
+                  <p className="text-4xl font-bold">{event.home_score}</p>
+                </div>
+                <span className="text-2xl font-light text-muted-foreground">-</span>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">{awayLabel}</p>
+                  <p className="text-4xl font-bold">{event.away_score}</p>
                 </div>
               </div>
-            )}
-
-          {/* Countdown (if scheduled) */}
-          {isScheduled && daysAway !== null && (
-            <div className="rounded-lg bg-primary/5 px-4 py-3 text-center text-sm font-medium">
-              {daysAway === 0
-                ? 'Today!'
-                : daysAway === 1
-                  ? 'Tomorrow'
-                  : daysAway > 0
-                    ? `In ${daysAway} days`
-                    : `${Math.abs(daysAway)} days ago`}
             </div>
           )}
-
-          {/* Attendance tracker */}
+          {isScheduled && daysAway !== null && (
+            <div className="rounded-lg bg-primary/5 px-4 py-3 text-center text-sm font-medium">
+              {daysAway === 0 ? 'Today!' : daysAway === 1 ? 'Tomorrow' : daysAway > 0 ? `In ${daysAway} days` : `${Math.abs(daysAway)} days ago`}
+            </div>
+          )}
           {isTraining && organisation && (
-            <AttendanceTracker
-              eventId={eventId}
-              activityTeamIds={teams.map((t) => t.id)}
-              orgId={organisation.id}
-            />
+            <AttendanceTracker eventId={eventId} activityTeamIds={teams.map((t) => t.id)} orgId={organisation.id} />
           )}
           {isMatch && organisation && (
             <AttendanceTracker
               eventId={eventId}
-              activityTeamIds={[
-                ...(event.home_team_id ? [event.home_team_id] : []),
-                ...(event.away_team_id ? [event.away_team_id] : []),
-              ]}
+              activityTeamIds={[...(event.home_team_id ? [event.home_team_id] : []), ...(event.away_team_id ? [event.away_team_id] : [])]}
               orgId={organisation.id}
             />
           )}
-
           <Separator />
-
-          {/* Details grid */}
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div className="flex items-start gap-2">
               <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -374,25 +295,15 @@ export default function EventDetailPage() {
               </div>
             )}
             {event.day_number !== null && (
-              <div>
-                <p className="text-xs text-muted-foreground">Day</p>
-                <p className="font-medium">Day {event.day_number}</p>
-              </div>
+              <div><p className="text-xs text-muted-foreground">Day</p><p className="font-medium">Day {event.day_number}</p></div>
             )}
             {event.session_number !== null && (
-              <div>
-                <p className="text-xs text-muted-foreground">Session</p>
-                <p className="font-medium">Session {event.session_number}</p>
-              </div>
+              <div><p className="text-xs text-muted-foreground">Session</p><p className="font-medium">Session {event.session_number}</p></div>
             )}
             {event.pool_number !== null && (
-              <div>
-                <p className="text-xs text-muted-foreground">Pool</p>
-                <p className="font-medium">Pool {event.pool_number}</p>
-              </div>
+              <div><p className="text-xs text-muted-foreground">Pool</p><p className="font-medium">Pool {event.pool_number}</p></div>
             )}
           </div>
-
           {event.notes && (
             <>
               <Separator />
@@ -405,29 +316,18 @@ export default function EventDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Score Entry Dialog */}
       {isMatch && (
         <Dialog open={scoreOpen} onOpenChange={setScoreOpen}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{isCompleted ? 'Edit Result' : 'Enter Result'}</DialogTitle>
-            </DialogHeader>
-            <ScoreEntryForm
-              event={event}
-              onSubmit={handleScoreSubmit}
-              loading={saving}
-              sportType={sportType}
-            />
+            <DialogHeader><DialogTitle>{isCompleted ? 'Edit Result' : 'Enter Result'}</DialogTitle></DialogHeader>
+            <ScoreEntryForm event={event} onSubmit={handleScoreSubmit} loading={saving} sportType={sportType} />
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Edit Event Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Event</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit Event</DialogTitle></DialogHeader>
           <EventForm
             activityType={activityType}
             participationMode={participationMode}

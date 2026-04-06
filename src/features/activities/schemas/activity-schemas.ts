@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 
 export const activitySchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  activityType: z.enum(['competition', 'tournament', 'training_session', 'training_camp'], {
+  activityType: z.enum(['competition', 'tournament', 'training_session', 'training_camp', 'trials'], {
     error: 'Please select an activity type',
   }),
   participationMode: z.enum(['participant', 'organiser'], {

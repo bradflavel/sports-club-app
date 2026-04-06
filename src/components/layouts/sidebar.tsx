@@ -21,6 +21,7 @@ import {
   Award,
   Dumbbell,
   Tent,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useEnabledModules } from '@/hooks/use-enabled-modules';
@@ -47,6 +48,7 @@ const MODULE_ICON_MAP: Record<string, LucideIcon> = {
   Award,
   Dumbbell,
   Tent,
+  ClipboardCheck,
 };
 
 interface NavItem {
@@ -147,9 +149,10 @@ export function Sidebar({
         >
           <item.icon className="h-[18px] w-[18px]" />
         </div>
-        {!collapsed && (
-          <span className="truncate text-[13.5px]">{item.label}</span>
-        )}
+        <span className={cn(
+          'truncate text-[13.5px] transition-all duration-300',
+          collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+        )}>{item.label}</span>
       </Link>
     );
   }
@@ -157,7 +160,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'hidden h-screen flex-col border-r bg-sidebar transition-all duration-300 lg:flex',
+        'hidden h-screen flex-col border-r bg-sidebar transition-all duration-300 ease-in-out lg:flex overflow-hidden',
         collapsed ? 'w-[68px]' : 'w-[260px]'
       )}
     >
@@ -184,34 +187,29 @@ export function Sidebar({
               {orgName.charAt(0)}
             </div>
           )}
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight">{orgName}</p>
-              <p className="text-[11px] text-muted-foreground">Sports Club</p>
-            </div>
-          )}
+          <div className={cn('min-w-0 transition-all duration-300', collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100')}>
+            <p className="truncate text-sm font-semibold leading-tight">{orgName}</p>
+            <p className="truncate text-[11px] text-muted-foreground">Sports Club</p>
+          </div>
         </div>
-        {!collapsed && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => setCollapsed(true)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground transition-all duration-300', collapsed ? 'w-0 opacity-0 p-0' : 'opacity-100')}
+          onClick={() => setCollapsed(true)}
+          tabIndex={collapsed ? -1 : 0}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2.5 py-3">
         {/* Core */}
         <div className="space-y-0.5">
-          {!collapsed && (
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              Main
-            </p>
-          )}
+          <p className={cn('mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 transition-all duration-300 truncate', collapsed ? 'h-0 opacity-0 mb-0' : 'h-auto opacity-100')}>
+            Main
+          </p>
           {coreNav.map(renderNavItem)}
         </div>
 
@@ -219,11 +217,9 @@ export function Sidebar({
 
         {/* Activities */}
         <div className="space-y-0.5">
-          {!collapsed && (
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              Activities
-            </p>
-          )}
+          <p className={cn('mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 transition-all duration-300 truncate', collapsed ? 'h-0 opacity-0 mb-0' : 'h-auto opacity-100')}>
+            Activities
+          </p>
           {activityNav.map(renderNavItem)}
         </div>
 
@@ -231,11 +227,9 @@ export function Sidebar({
 
         {/* Tools */}
         <div className="space-y-0.5">
-          {!collapsed && (
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-              Tools
-            </p>
-          )}
+          <p className={cn('mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 transition-all duration-300 truncate', collapsed ? 'h-0 opacity-0 mb-0' : 'h-auto opacity-100')}>
+            Tools
+          </p>
           {toolsNav.map(renderNavItem)}
         </div>
 
@@ -263,14 +257,10 @@ export function Sidebar({
                   {getInitials(userFirstName, userLastName)}
                 </AvatarFallback>
               </Avatar>
-              {!collapsed && (
-                <div className="min-w-0 text-left flex-1">
-                  <p className="truncate text-sm font-medium leading-tight">{userName}</p>
-                </div>
-              )}
-              {!collapsed && (
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
-              )}
+              <div className={cn('min-w-0 text-left flex-1 transition-all duration-300', collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100')}>
+                <p className="truncate text-sm font-medium leading-tight">{userName}</p>
+              </div>
+              <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground/40 transition-all duration-300', collapsed ? 'w-0 opacity-0' : 'opacity-100')} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">

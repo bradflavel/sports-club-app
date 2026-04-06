@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
@@ -14,17 +14,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ActivityList } from '@/features/activities/components/activity-list';
-import { ActivityForm } from '@/features/activities/components/activity-form';
+import { CreateActivityWizard, type WizardOutput } from '@/features/activities/components/create-activity-wizard';
 import { getActivities, createActivity } from '@/features/activities/services/activity-service';
 import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
+import { generateSlug, getActivityPath } from '@/lib/utils';
 import type { Activity, ActivityType } from '@/lib/supabase/database.types';
-import type { ActivityInput } from '@/features/activities/schemas/activity-schemas';
 
-export default function ActivitiesPage() {
+export interface ActivitiesPageProps {
+  typeOverride?: ActivityType;
+}
+
+export default function ActivitiesPage({ typeOverride }: ActivitiesPageProps = {}) {
   const searchParams = useSearchParams();
-  const typeParam = searchParams.get('type') as ActivityType | null;
+  const router = useRouter();
+  const typeParam = typeOverride ?? (searchParams.get('type') as ActivityType | null);
+  const parentParam = searchParams.get('parent');
   const { organisation, loading: orgLoading } = useOrganisation();
   const { toast } = useToast();
 
@@ -48,10 +55,15 @@ export default function ActivitiesPage() {
     if (error) {
       toast({ title: 'Error loading activities', description: error.message, variant: 'destructive' });
     } else {
-      setActivities(data ?? []);
+      let filtered = data ?? [];
+      // Filter by parent activity if specified
+      if (parentParam) {
+        filtered = filtered.filter((a) => a.parent_activity_id === parentParam);
+      }
+      setActivities(filtered);
     }
     setLoading(false);
-  }, [organisation?.id, typeParam, toast]);
+  }, [organisation?.id, typeParam, parentParam, toast]);
 
   useEffect(() => {
     if (!orgLoading && organisation?.id) {
@@ -59,35 +71,142 @@ export default function ActivitiesPage() {
     }
   }, [orgLoading, organisation?.id, fetchActivities]);
 
-  async function handleCreate(formData: ActivityInput) {
+  async function handleCreate(data: WizardOutput) {
     if (!organisation?.id) return;
     setSubmitting(true);
 
-    const { error } = await createActivity({
-      organisation_id: organisation.id,
-      activity_type: formData.activityType,
-      participation_mode: formData.participationMode,
-      name: formData.name,
-      description: formData.description || null,
-      start_date: formData.startDate,
-      end_date: formData.endDate || null,
-      is_current: true,
-      total_rounds: formData.totalRounds ?? null,
-      has_finals: formData.hasFinals ?? null,
-      pool_count: formData.poolCount ?? null,
-      recurrence_rule: formData.recurrenceRule || null,
-      default_venue: formData.defaultVenue || null,
-      default_start_time: formData.defaultStartTime || null,
-      default_duration_minutes: formData.defaultDurationMinutes ?? null,
-      parent_activity_id: formData.parentActivityId || null,
-    });
+    const supabase = createClient();
+    const activitySlug = generateSlug(data.name);
+
+    const { data: newActivity, error } = await supabase
+      .from('activities')
+      .insert({
+        organisation_id: organisation.id,
+        slug: activitySlug,
+        activity_type: data.activityType,
+        participation_mode: data.participationMode,
+        name: data.name,
+        description: data.description || null,
+        start_date: data.startDate || data.firstRoundDate || null,
+        end_date: data.endDate || null,
+        is_current: true,
+        total_rounds: data.totalRounds ?? null,
+        has_finals: data.hasFinals ?? null,
+        pool_count: data.poolCount ?? null,
+        recurrence_rule: data.recurrenceRule || null,
+        default_venue: data.defaultVenue || null,
+        default_start_time: data.defaultStartTime || null,
+        default_duration_minutes: data.defaultDurationMinutes ?? null,
+        parent_activity_id: data.parentActivityId || null,
+        // Competition-specific fields
+        host_name: data.hostName || null,
+        host_type: data.hostType || null,
+        registration_opens: data.registrationOpens || null,
+        registration_closes: data.registrationCloses || null,
+        first_round_date: data.firstRoundDate || null,
+        finals_start_date: data.finalsStartDate || null,
+        schedule_frequency: data.scheduleFrequency || null,
+        has_byes: data.hasByes ?? false,
+        trials_required: data.trialsRequired ?? false,
+        training_required: data.trainingRequired ?? false,
+        round_dates: data.roundDates?.length ? data.roundDates : null,
+      })
+      .select('id')
+      .single();
+
+    // Create divisions if provided and get their IDs back
+    let createdDivisions: { id: string; name: string }[] = [];
+    if (!error && newActivity && data.divisions?.length) {
+      const { data: divRows } = await supabase
+        .from('competition_divisions')
+        .insert(
+          data.divisions.map((div, i) => ({
+            activity_id: newActivity.id,
+            name: div.name,
+            max_teams: div.maxTeams ?? null,
+            age_group: div.ageGroup || null,
+            gender: div.gender || null,
+            display_order: i,
+          }))
+        )
+        .select('id, name');
+      createdDivisions = (divRows ?? []) as { id: string; name: string }[];
+    }
+
+    // Create child activities for trials and training
+    if (!error && newActivity) {
+      // Training — one per division, always organiser mode
+      if (data.trainingRequired && createdDivisions.length > 0) {
+        for (const div of createdDivisions) {
+          const trainingName = `${data.name} - Training (${div.name})`;
+          const { data: trainingActivity } = await createActivity({
+            organisation_id: organisation.id,
+            activity_type: 'training_session',
+            participation_mode: 'organiser',
+            name: trainingName,
+            slug: generateSlug(trainingName),
+            description: null,
+            start_date: null,
+            end_date: null,
+            is_current: true,
+            total_rounds: null,
+            has_finals: null,
+            pool_count: null,
+            recurrence_rule: null,
+            default_venue: null,
+            default_start_time: null,
+            default_duration_minutes: null,
+            parent_activity_id: newActivity.id,
+          });
+          if (trainingActivity) {
+            await supabase
+              .from('activities')
+              .update({ competition_division_id: div.id } as Record<string, unknown>)
+              .eq('id', trainingActivity.id);
+          }
+        }
+      }
+
+      // Trials — one per division, always organiser mode
+      if (data.trialsRequired && createdDivisions.length > 0) {
+        for (const div of createdDivisions) {
+          const trialName = `${data.name} - Trials (${div.name})`;
+          const { data: trialActivity } = await createActivity({
+            organisation_id: organisation.id,
+            activity_type: 'trials',
+            participation_mode: 'organiser',
+            name: trialName,
+            slug: generateSlug(trialName),
+            description: null,
+            start_date: null,
+            end_date: null,
+            is_current: true,
+            total_rounds: null,
+            has_finals: null,
+            pool_count: null,
+            recurrence_rule: null,
+            default_venue: null,
+            default_start_time: null,
+            default_duration_minutes: null,
+            parent_activity_id: newActivity.id,
+          });
+          // Link to the specific division
+          if (trialActivity) {
+            await supabase
+              .from('activities')
+              .update({ competition_division_id: div.id } as Record<string, unknown>)
+              .eq('id', trialActivity.id);
+          }
+        }
+      }
+    }
 
     if (error) {
       toast({ title: 'Error creating activity', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: `${singularLabel} created successfully` });
       setCreateOpen(false);
-      fetchActivities();
+      router.push(`${getActivityPath(data.activityType, activitySlug)}?created=1`);
     }
     setSubmitting(false);
   }
@@ -131,12 +250,15 @@ export default function ActivitiesPage() {
           <DialogHeader>
             <DialogTitle>Create {singularLabel}</DialogTitle>
           </DialogHeader>
-          <ActivityForm
-            defaultValues={typeParam ? { activityType: typeParam } : undefined}
-            onSubmit={handleCreate}
-            loading={submitting}
-            activities={activities}
-          />
+          {typeParam && (
+            <CreateActivityWizard
+              activityType={typeParam}
+              existingActivities={activities}
+              onSubmit={handleCreate}
+              loading={submitting}
+              onCancel={() => setCreateOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
