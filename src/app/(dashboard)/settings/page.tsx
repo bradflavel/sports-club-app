@@ -84,6 +84,10 @@ export default function SettingsPage() {
       toast({ title: 'Password must be at least 8 characters', variant: 'destructive' });
       return;
     }
+    if (!/\d/.test(newPassword)) {
+      toast({ title: 'Password must contain at least one number', variant: 'destructive' });
+      return;
+    }
     setPasswordLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password: newPassword });

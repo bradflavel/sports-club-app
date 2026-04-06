@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { DocumentCard } from './document-card';
 import { DocumentUploadDialog } from './document-upload-dialog';
 import { createClient } from '@/lib/supabase/client';
+import { validateDocumentFile } from '@/lib/file-validation';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/use-user';
 import { DOCUMENT_CATEGORY_OPTIONS } from '@/lib/constants';
@@ -61,8 +62,14 @@ export function DocumentLibrary() {
     file: File;
   }) => {
     if (!profile?.organisation_id) return;
-    const supabase = createClient();
 
+    const validationError = validateDocumentFile(data.file);
+    if (validationError) {
+      toast({ title: 'Invalid file', description: validationError, variant: 'destructive' });
+      return;
+    }
+
+    const supabase = createClient();
     const filePath = `${profile.organisation_id}/${Date.now()}-${data.file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('documents')
@@ -73,15 +80,14 @@ export function DocumentLibrary() {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-
+    // Store the storage path, not a public URL — we generate signed URLs on demand
     const { error } = await supabase.from('documents').insert({
       organisation_id: profile.organisation_id,
       title: data.title,
       description: data.description,
       category: data.category as Document['category'],
       is_public: data.isPublic,
-      file_url: urlData.publicUrl,
+      file_url: filePath,
       file_name: data.file.name,
       file_size_bytes: data.file.size,
       file_type: data.file.type,
@@ -106,10 +112,9 @@ export function DocumentLibrary() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return;
     }
-    // Remove the storage object
+    // Remove the storage object (file_url now stores the path directly)
     if (doc?.file_url) {
-      const path = doc.file_url.split('/storage/v1/object/public/documents/')[1];
-      if (path) await supabase.storage.from('documents').remove([decodeURIComponent(path)]);
+      await supabase.storage.from('documents').remove([doc.file_url]);
     }
     toast({ title: 'Document deleted' });
     fetchDocuments();

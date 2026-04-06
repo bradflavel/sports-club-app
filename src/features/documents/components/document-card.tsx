@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { createClient } from '@/lib/supabase/client';
 import type { Document } from '@/lib/supabase/database.types';
 
 const fileIcons: Record<string, typeof FileText> = {
@@ -57,10 +58,14 @@ export function DocumentCard({ document, canEdit = false, onEdit, onDelete }: Do
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <a href={document.file_url} target="_blank" rel="noopener noreferrer">
-                      <Download className="mr-2 h-4 w-4" /> Download
-                    </a>
+                  <DropdownMenuItem onClick={async () => {
+                    const supabase = createClient();
+                    const { data } = await supabase.storage
+                      .from('documents')
+                      .createSignedUrl(document.file_url, 60);
+                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                  }}>
+                    <Download className="mr-2 h-4 w-4" /> Download
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onEdit}>
                     <Edit className="mr-2 h-4 w-4" /> Edit
