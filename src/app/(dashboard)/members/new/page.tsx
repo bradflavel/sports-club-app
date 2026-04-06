@@ -62,6 +62,7 @@ export default function NewMemberPage() {
             avatar_url: null,
             organisation_id: organisation.id,
             role: 'member' as const,
+            preferred_name: null,
             emergency_contact_name: data.emergencyContactName || null,
             emergency_contact_phone: data.emergencyContactPhone || null,
           })

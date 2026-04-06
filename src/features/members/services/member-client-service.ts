@@ -78,6 +78,7 @@ export async function importMembersFromCsvClient(
             phone: row.phone || null,
             date_of_birth: row.date_of_birth || null,
             avatar_url: null,
+            preferred_name: null,
             emergency_contact_name: null,
             emergency_contact_phone: null,
             organisation_id: orgId,

@@ -41,9 +41,10 @@ export async function updateSession(request: NextRequest) {
   const nextParam = request.nextUrl.searchParams.get('next');
   if (code && !request.nextUrl.pathname.startsWith('/auth/callback')) {
     const url = request.nextUrl.clone();
+    const destination = nextParam || request.nextUrl.pathname;
     url.pathname = '/auth/callback';
     url.searchParams.set('code', code);
-    if (nextParam) url.searchParams.set('next', nextParam);
+    url.searchParams.set('next', destination);
     return NextResponse.redirect(url);
   }
 

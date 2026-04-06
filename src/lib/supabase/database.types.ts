@@ -138,6 +138,7 @@ export interface Profile {
   avatar_url: string | null;
   organisation_id: string | null;
   role: UserRole;
+  preferred_name: string | null;
   gender?: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
