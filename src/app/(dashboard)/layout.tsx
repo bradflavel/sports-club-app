@@ -5,12 +5,10 @@ import { Sidebar } from '@/components/layouts/sidebar';
 import { TopBar } from '@/components/layouts/top-bar';
 import { MobileNav } from '@/components/layouts/mobile-nav';
 import { ErrorBoundary } from '@/components/shared/error-boundary';
-import { useUser } from '@/hooks/use-user';
-import { useOrganisation } from '@/hooks/use-organisation';
+import { AuthProvider, useAuth } from '@/hooks/use-auth-context';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { profile } = useUser();
-  const { organisation } = useOrganisation();
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const { profile, organisation } = useAuth();
 
   return (
     <div className="fixed inset-0 flex overflow-hidden">
@@ -41,5 +39,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Suspense>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </AuthProvider>
   );
 }

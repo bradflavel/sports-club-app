@@ -17,6 +17,28 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Enforce service boundary: components should not import Supabase clients directly
+  {
+    files: [
+      "src/app/**/*.tsx",
+      "src/features/**/components/**/*.tsx",
+      "src/components/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "warn",
+        {
+          patterns: [
+            {
+              group: ["@/lib/supabase/client", "@/lib/supabase/server"],
+              message:
+                "Components should not import Supabase directly. Use the service layer or useAuth() instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     ".next/**",
