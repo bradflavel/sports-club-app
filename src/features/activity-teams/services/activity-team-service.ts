@@ -71,8 +71,6 @@ export async function createTeam(
     manager_id?: string | null;
     max_players: number;
     is_own_team: boolean;
-    pool_number?: number | null;
-    seed_number?: number | null;
   }
 ) {
   const supabase = createClient();
@@ -90,8 +88,8 @@ export async function createTeam(
       max_players: data.max_players,
       is_own_team: data.is_own_team,
       source_team_id: null,
-      pool_number: data.pool_number ?? null,
-      seed_number: data.seed_number ?? null,
+      pool_number: null,
+      seed_number: null,
     })
     .select(
       '*, coach:profiles!activity_teams_coach_id_fkey(*), manager:profiles!activity_teams_manager_id_fkey(*)'
@@ -113,8 +111,6 @@ export async function updateTeam(
       | 'manager_id'
       | 'max_players'
       | 'is_own_team'
-      | 'pool_number'
-      | 'seed_number'
     >
   >
 ) {
@@ -174,8 +170,8 @@ export async function cloneTeam(
       max_players: sourceTeam.max_players,
       is_own_team: sourceTeam.is_own_team,
       source_team_id: sourceTeamId,
-      pool_number: sourceTeam.pool_number,
-      seed_number: sourceTeam.seed_number,
+      pool_number: null,
+      seed_number: null,
     })
     .select()
     .single();

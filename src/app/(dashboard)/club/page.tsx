@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import { differenceInMonths } from 'date-fns';
-import { Pencil, Eye, CheckCircle, ArrowLeft, Copy, ChevronDown, Loader2 } from 'lucide-react';
+import { Pencil, Eye, CheckCircle, ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -26,7 +26,6 @@ import { ClubReviewReminder } from '@/features/club-profile/components/club-revi
 import { ModuleSettings } from '@/features/activities/components/module-settings';
 import { useEnabledModules } from '@/hooks/use-enabled-modules';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { Input } from '@/components/ui/input';
 import type { ClubVenue, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 export default function ClubProfilePage() {
@@ -204,33 +203,8 @@ export default function ClubProfilePage() {
           <TabsContent value="details" className="mt-8 space-y-6">
             <ClubDetailsForm organisation={organisation} onSaved={fetchData} hideSaveButton saveRef={detailsSaveRef} />
 
-            <Separator />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Invite Code */}
-              <div className="rounded-lg border p-4">
-                <h4 className="text-sm font-semibold">Invite Code</h4>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Share with members to join your club.
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Input value={organisation.slug} readOnly className="font-mono text-sm h-8" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 shrink-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(organisation.slug);
-                      toast({ title: 'Invite code copied!' });
-                    }}
-                  >
-                    <Copy className="mr-1.5 h-3.5 w-3.5" />
-                    Copy
-                  </Button>
-                </div>
-              </div>
-
-              {/* Danger Zone - collapsible */}
+            {/* Danger Zone - collapsible */}
+            <div className="max-w-md">
               <div className="rounded-lg border border-destructive/30 p-4">
                 <button
                   type="button"

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/format';
 import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
+import { getActivityPath } from '@/lib/utils';
 import type { Activity } from '@/lib/supabase/database.types';
 
 interface ActivityCardProps {
@@ -18,7 +19,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
   const modeLabel = activity.participation_mode === 'organiser' ? 'Organising' : 'Participating';
 
   return (
-    <Link href={`/activities/${activity.id}`}>
+    <Link href={getActivityPath(activity.activity_type, activity.slug)}>
       <Card className="transition-colors hover:bg-accent/50">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
@@ -40,7 +41,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
             <span>
-              {formatDate(activity.start_date)}
+              {activity.start_date ? formatDate(activity.start_date) : activity.first_round_date ? formatDate(activity.first_round_date) : 'No date set'}
               {activity.end_date ? ` - ${formatDate(activity.end_date)}` : ''}
             </span>
           </div>

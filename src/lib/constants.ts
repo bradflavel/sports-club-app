@@ -188,6 +188,7 @@ export const PAYMENT_TYPE_OPTIONS = [
   { value: 'fine', label: 'Fine' },
   { value: 'merchandise', label: 'Merchandise' },
   { value: 'event', label: 'Event' },
+  { value: 'trial_fee', label: 'Trial Fee' },
   { value: 'other', label: 'Other' },
 ] as const;
 
@@ -235,30 +236,51 @@ export const ACTIVITY_TYPE_CONFIG = {
     singularLabel: 'Competition',
     icon: 'Trophy',
     description: 'Seasonal competitions with rounds, ladders, and finals',
-    navHref: '/activities?type=competition',
+    navHref: '/competitions',
   },
   tournament: {
     label: 'Tournaments',
     singularLabel: 'Tournament',
     icon: 'Award',
     description: 'Short-term events over 1-3 days with pools and brackets',
-    navHref: '/activities?type=tournament',
+    navHref: '/tournaments',
   },
   training_session: {
     label: 'Training',
     singularLabel: 'Training Session',
     icon: 'Dumbbell',
     description: 'Recurring or one-off training sessions with attendance tracking',
-    navHref: '/activities?type=training_session',
+    navHref: '/training',
   },
   training_camp: {
     label: 'Camps',
     singularLabel: 'Training Camp',
     icon: 'Tent',
     description: 'Multi-day training camps with scheduled sessions',
-    navHref: '/activities?type=training_camp',
+    navHref: '/camps',
+  },
+  trials: {
+    label: 'Trials',
+    singularLabel: 'Trials',
+    icon: 'ClipboardCheck',
+    description: 'Selection trials linked to a competition',
+    navHref: '/trials',
   },
 } as const;
+
+// Map activity_type to URL path segment
+export const ACTIVITY_TYPE_ROUTE_MAP: Record<string, string> = {
+  competition: 'competitions',
+  tournament: 'tournaments',
+  training_session: 'training',
+  training_camp: 'camps',
+  trials: 'trials',
+} as const;
+
+// Reverse map: URL path segment to activity_type
+export const ROUTE_TO_ACTIVITY_TYPE: Record<string, string> = Object.fromEntries(
+  Object.entries(ACTIVITY_TYPE_ROUTE_MAP).map(([k, v]) => [v, k])
+);
 
 export const ACTIVITY_TYPE_OPTIONS = Object.entries(ACTIVITY_TYPE_CONFIG).map(
   ([value, config]) => ({

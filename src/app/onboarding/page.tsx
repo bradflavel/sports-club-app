@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Building2, Users, CheckCircle2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -330,16 +330,26 @@ function StepCreateClub({
 function StepJoinClub({
   onComplete,
   onBack,
+  initialSlug,
 }: {
   onComplete: () => void;
   onBack: () => void;
+  initialSlug?: string;
 }) {
   const { toast } = useToast();
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(initialSlug ?? '');
   const [searching, setSearching] = useState(false);
   const [joining, setJoining] = useState(false);
   const [found, setFound] = useState<{ id: string; name: string; sport_type: string } | null>(null);
   const [notFound, setNotFound] = useState(false);
+
+  // Auto-search when pre-filled from invite link
+  useEffect(() => {
+    if (initialSlug) {
+      handleSearch();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSearch = async () => {
     if (!inviteCode.trim()) return;
@@ -653,8 +663,18 @@ function StepDone({ onGoToDashboard }: { onGoToDashboard: () => void }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
+  );
+}
+
+function OnboardingContent() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>({ id: 1 });
+  const searchParams = useSearchParams();
+  const joinSlug = searchParams.get('join');
+  const [step, setStep] = useState<Step>({ id: joinSlug ? '2b' : 1 });
 
   const currentStepNumber = (() => {
     if (step.id === 1) return 1;
@@ -685,6 +705,7 @@ export default function OnboardingPage() {
           <StepJoinClub
             onComplete={() => setStep({ id: 3 })}
             onBack={() => setStep({ id: 1 })}
+            initialSlug={joinSlug ?? undefined}
           />
         )}
 

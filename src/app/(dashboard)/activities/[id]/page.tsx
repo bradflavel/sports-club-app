@@ -1,8 +1,9 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Pencil, Trash2, Plus, Users, Calendar } from 'lucide-react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Pencil, Trash2, Plus, Users, Calendar, Loader2, DollarSign } from 'lucide-react';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,17 +38,45 @@ import { EventCalendar } from '@/features/activity-events/components/event-calen
 import { EventForm } from '@/features/activity-events/components/event-form';
 import { StandingsTable } from '@/features/activity-events/components/standings-table';
 import { getEventsForActivity, createEvent } from '@/features/activity-events/services/event-service';
+import { updateEvent } from '@/features/activity-events/services/event-service';
 import { getStandings, recalculateStandings } from '@/features/activity-events/services/standings-service';
-import type { Activity, ActivityTeamWithDetails, ActivityEventWithTeams, ActivityStandingWithTeam, Profile } from '@/lib/supabase/database.types';
+import { TrialDateForm } from '@/features/trials/components/trial-date-form';
+import { TrialDateCard } from '@/features/trials/components/trial-date-card';
+import { TrialFeeConfig } from '@/features/trials/components/trial-fee-config';
+import { TrialAttendanceTracker } from '@/features/trials/components/trial-attendance-tracker';
+import { TrialPaymentTable } from '@/features/trials/components/trial-payment-table';
+import { TrialMemberPicker } from '@/features/trials/components/trial-member-picker';
+import {
+  getTrialEvents,
+  getTrialDivision,
+  updateTrialFeeConfig,
+  generateTrialInvoices,
+} from '@/features/trials/services/trial-service';
+import { getVenues } from '@/features/club-profile/services/club-profile-service';
+import type {
+  Activity,
+  ActivityTeamWithDetails,
+  ActivityEventWithTeams,
+  ActivityStandingWithTeam,
+  CompetitionDivision,
+  Profile,
+  ClubVenue,
+  ActivityEvent,
+} from '@/lib/supabase/database.types';
 import type { ActivityInput } from '@/features/activities/schemas/activity-schemas';
 import type { ActivityTeamInput } from '@/features/activity-teams/schemas/activity-team-schemas';
 import type { EventInput } from '@/features/activity-events/schemas/event-schemas';
 import { createClient } from '@/lib/supabase/client';
+import { getActivityPath, getActivityListPath } from '@/lib/utils';
 
-export default function ActivityDetailPage() {
-  const params = useParams();
+/** Convert a stored date_time string to datetime-local input format */
+const toDateTimeLocal = (s: string) =>
+  s ? s.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '').slice(0, 16) : '';
+
+export function ActivityDetailPageContent({ activityId }: { activityId: string }) {
   const router = useRouter();
-  const activityId = params.id as string;
+  const searchParams = useSearchParams();
+  const justCreated = searchParams.get('created') === '1';
   const { organisation, loading: orgLoading } = useOrganisation();
   const { toast } = useToast();
 
@@ -59,6 +88,7 @@ export default function ActivityDetailPage() {
   const [standings, setStandings] = useState<ActivityStandingWithTeam[]>([]);
   const [standingsLoading, setStandingsLoading] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [divisions, setDivisions] = useState<CompetitionDivision[]>([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -67,12 +97,22 @@ export default function ActivityDetailPage() {
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const [scheduleView, setScheduleView] = useState<'list' | 'calendar'>('list');
   const [submitting, setSubmitting] = useState(false);
+  const [setupDismissed, setSetupDismissed] = useState(false);
+
+  // Trials-specific state
+  const [trialEvents, setTrialEvents] = useState<ActivityEvent[]>([]);
+  const [trialDivision, setTrialDivision] = useState<CompetitionDivision | null>(null);
+  const [venues, setVenues] = useState<ClubVenue[]>([]);
+  const [addTrialDateOpen, setAddTrialDateOpen] = useState(false);
+  const [editTrialDateId, setEditTrialDateId] = useState<string | null>(null);
+  const [trialsTab, setTrialsTab] = useState('overview');
+  const [attendanceEventFilter, setAttendanceEventFilter] = useState<string | null>(null);
 
   const fetchActivity = useCallback(async () => {
     const { data, error } = await getActivityById(activityId);
     if (error || !data) {
       toast({ title: 'Activity not found', variant: 'destructive' });
-      router.push('/activities');
+      router.push('/dashboard');
       return;
     }
     setActivity(data);
@@ -110,13 +150,57 @@ export default function ActivityDetailPage() {
     setProfiles((data ?? []) as Profile[]);
   }, [organisation?.id]);
 
+  const fetchDivisions = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('competition_divisions')
+      .select('*')
+      .eq('activity_id', activityId)
+      .order('display_order');
+    setDivisions((data ?? []) as CompetitionDivision[]);
+  }, [activityId]);
+
+  const fetchVenues = useCallback(async () => {
+    if (!organisation?.id) return;
+    const { data } = await getVenues(organisation.id);
+    setVenues((data ?? []) as ClubVenue[]);
+  }, [organisation?.id]);
+
+  const fetchTrialData = useCallback(async (act: Activity) => {
+    if (act.activity_type !== 'trials') return;
+
+    const eventsResult = await getTrialEvents(act.id);
+    setTrialEvents(eventsResult.data ?? []);
+
+    if (act.competition_division_id) {
+      const divResult = await getTrialDivision(act.competition_division_id);
+      setTrialDivision(divResult.data ?? null);
+    } else {
+      setTrialDivision(null);
+    }
+  }, []);
+
   useEffect(() => {
     if (!orgLoading) {
-      Promise.all([fetchActivity(), fetchAllActivities(), fetchTeams(), fetchEvents(), fetchStandings(), fetchProfiles()]).finally(() =>
-        setLoading(false)
-      );
+      Promise.all([
+        fetchActivity(),
+        fetchAllActivities(),
+        fetchTeams(),
+        fetchEvents(),
+        fetchStandings(),
+        fetchProfiles(),
+        fetchDivisions(),
+        fetchVenues(),
+      ]).finally(() => setLoading(false));
     }
-  }, [orgLoading, fetchActivity, fetchAllActivities, fetchTeams, fetchEvents, fetchStandings, fetchProfiles]);
+  }, [orgLoading, fetchActivity, fetchAllActivities, fetchTeams, fetchEvents, fetchStandings, fetchProfiles, fetchDivisions, fetchVenues]);
+
+  // Fetch trials data after activity loads
+  useEffect(() => {
+    if (activity) {
+      fetchTrialData(activity);
+    }
+  }, [activity, fetchTrialData]);
 
   async function handleUpdate(formData: ActivityInput) {
     setSubmitting(true);
@@ -155,8 +239,7 @@ export default function ActivityDetailPage() {
       setSubmitting(false);
     } else {
       toast({ title: 'Activity deleted' });
-      const backType = activity?.activity_type ?? '';
-      router.push(`/activities?type=${backType}`);
+      router.push(getActivityListPath(activity?.activity_type ?? 'competition'));
     }
   }
 
@@ -168,12 +251,19 @@ export default function ActivityDetailPage() {
   const isTournament = activity.activity_type === 'tournament';
   const isTrainingSession = activity.activity_type === 'training_session';
   const isTrainingCamp = activity.activity_type === 'training_camp';
+  const isTrials = activity.activity_type === 'trials';
+
+  const childActivities = allActivities.filter((a) => a.parent_activity_id === activityId);
+  const showSetupChecklist =
+    justCreated &&
+    !setupDismissed &&
+    (activity.trials_required || activity.training_required || activity.has_finals);
 
   const editDefaults: Partial<ActivityInput> = {
     name: activity.name,
     activityType: activity.activity_type,
     participationMode: activity.participation_mode,
-    startDate: activity.start_date,
+    startDate: activity.start_date ?? '',
     endDate: activity.end_date ?? '',
     description: activity.description ?? '',
     totalRounds: activity.total_rounds ?? undefined,
@@ -186,17 +276,33 @@ export default function ActivityDetailPage() {
     parentActivityId: activity.parent_activity_id ?? '',
   };
 
+  // Back button: for trials, go to parent competition; otherwise go to activity type list
+  const parentActivity = activity.parent_activity_id
+    ? allActivities.find((a) => a.id === activity.parent_activity_id)
+    : null;
+  const backHref = isTrials && parentActivity
+    ? getActivityPath(parentActivity.activity_type, parentActivity.slug)
+    : getActivityListPath(activity.activity_type);
+  const backLabel = isTrials && activity.parent_activity_id
+    ? allActivities.find((a) => a.id === activity.parent_activity_id)?.name ?? 'Competition'
+    : typeConfig?.label ?? 'Activities';
+
+  // Find the event being edited (for trial date edit dialog)
+  const editingTrialEvent = editTrialDateId
+    ? trialEvents.find((e) => e.id === editTrialDateId) ?? null
+    : null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push(`/activities?type=${activity.activity_type}`)}
+          onClick={() => router.push(backHref)}
           className="gap-1"
         >
           <ArrowLeft className="h-4 w-4" />
-          {typeConfig.label}
+          {backLabel}
         </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
@@ -217,189 +323,479 @@ export default function ActivityDetailPage() {
 
       <ActivityDetailHeader activity={activity} />
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="teams">Teams</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          {isCompetition && <TabsTrigger value="standings">Standings</TabsTrigger>}
-        </TabsList>
+      {/* Setup Checklist (after competition creation) */}
+      {showSetupChecklist && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+          <span className="text-sm font-medium mr-1">Set up:</span>
+          {activity.trials_required && childActivities.some((a) => a.activity_type === 'trials') && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => router.push(getActivityListPath('trials', activityId))}>
+              Trials
+            </Button>
+          )}
+          {activity.training_required && childActivities.some((a) => a.activity_type === 'training_session') && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => router.push(getActivityListPath('training_session', activityId))}>
+              Training
+            </Button>
+          )}
+          {activity.has_finals && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditOpen(true)}>
+              Finals
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => setSetupDismissed(true)}>
+            Dismiss
+          </Button>
+        </div>
+      )}
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="font-medium text-muted-foreground">Type</dt>
-                  <dd>{typeConfig.singularLabel}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-muted-foreground">Mode</dt>
-                  <dd>
-                    {activity.participation_mode === 'organiser'
-                      ? 'Organising'
-                      : 'Participating'}
-                  </dd>
-                </div>
+      {/* ==================== TRIALS LAYOUT ==================== */}
+      {isTrials ? (
+        <Tabs value={trialsTab} onValueChange={setTrialsTab}>
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
+            <TabsTrigger value="trial-dates">Trial Dates</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+          </TabsList>
 
-                {isCompetition && activity.total_rounds != null && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Total Rounds</dt>
-                    <dd>{activity.total_rounds}</dd>
-                  </div>
-                )}
-                {isCompetition && activity.has_finals != null && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Finals Series</dt>
-                    <dd>{activity.has_finals ? 'Yes' : 'No'}</dd>
-                  </div>
-                )}
-
-                {isTournament && activity.pool_count != null && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Pools</dt>
-                    <dd>{activity.pool_count}</dd>
-                  </div>
-                )}
-
-                {(isTrainingSession || isTrainingCamp) && activity.default_venue && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Venue</dt>
-                    <dd>{activity.default_venue}</dd>
-                  </div>
-                )}
-
-                {isTrainingSession && activity.default_start_time && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Start Time</dt>
-                    <dd>{activity.default_start_time}</dd>
-                  </div>
-                )}
-                {isTrainingSession && activity.default_duration_minutes != null && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Duration</dt>
-                    <dd>{activity.default_duration_minutes} minutes</dd>
-                  </div>
-                )}
-                {isTrainingSession && activity.recurrence_rule && (
-                  <div>
-                    <dt className="font-medium text-muted-foreground">Recurrence</dt>
-                    <dd>{activity.recurrence_rule}</dd>
-                  </div>
-                )}
-
-                {activity.parent_activity_id && (
-                  <div className="sm:col-span-2">
-                    <dt className="font-medium text-muted-foreground">
-                      Linked Activity
-                    </dt>
-                    <dd>
-                      {allActivities.find((a) => a.id === activity.parent_activity_id)
-                        ?.name ?? 'Unknown'}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </CardContent>
-          </Card>
-
-          {activity.description && (
+          {/* Trials Overview */}
+          <TabsContent value="overview" className="mt-3 space-y-3">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {activity.description}
-                </p>
+              <CardContent className="py-3">
+                <dl className="grid gap-2 text-sm sm:grid-cols-3">
+                  {activity.parent_activity_id && (
+                    <div>
+                      <dt className="text-muted-foreground text-xs">Competition</dt>
+                      <dd>
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-sm"
+                          onClick={() => {
+                            if (parentActivity) router.push(getActivityPath(parentActivity.activity_type, parentActivity.slug));
+                          }}
+                        >
+                          {allActivities.find((a) => a.id === activity.parent_activity_id)?.name ?? 'Unknown'}
+                        </Button>
+                      </dd>
+                    </div>
+                  )}
+                  {trialDivision && (
+                    <div>
+                      <dt className="text-muted-foreground text-xs">Division</dt>
+                      <dd className="font-medium">{trialDivision.name}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-muted-foreground text-xs">Sessions</dt>
+                    <dd className="font-medium">{trialEvents.length}</dd>
+                  </div>
+                </dl>
               </CardContent>
             </Card>
-          )}
-        </TabsContent>
 
-        {/* Teams Tab */}
-        <TabsContent value="teams" className="mt-4 space-y-4">
-          <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCloneTeamOpen(true)}>
-              Clone from Activity
-            </Button>
-            <Button size="sm" className="gap-2" onClick={() => setCreateTeamOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Team
-            </Button>
-          </div>
-          {teams.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="No teams yet"
-              description="Add a team to get started."
-              actionLabel="Add Team"
-              onAction={() => setCreateTeamOpen(true)}
-            />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {teams.map((team) => (
-                <ActivityTeamCard key={team.id} team={team} activityId={activityId} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Schedule Tab */}
-        <TabsContent value="schedule" className="mt-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
-              <Button
-                variant={scheduleView === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setScheduleView('list')}
-              >
-                List
-              </Button>
-              <Button
-                variant={scheduleView === 'calendar' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setScheduleView('calendar')}
-              >
-                Calendar
-              </Button>
-            </div>
-            <Button size="sm" className="gap-2" onClick={() => setCreateEventOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Event
-            </Button>
-          </div>
-          {scheduleView === 'list' ? (
-            <EventList
-              events={events}
-              sportType={organisation?.sport_type}
-              emptyMessage="No events scheduled yet."
-            />
-          ) : (
-            <EventCalendar events={events} sportType={organisation?.sport_type} />
-          )}
-        </TabsContent>
-
-        {/* Standings Tab (competition only) */}
-        {isCompetition && (
-          <TabsContent value="standings" className="mt-4">
-            <StandingsTable
-              standings={standings}
-              loading={standingsLoading}
-              onRecalculate={async () => {
-                setStandingsLoading(true);
-                await recalculateStandings(activityId);
-                await fetchStandings();
-                setStandingsLoading(false);
-              }}
-            />
+            <Card>
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="text-sm">Fee Configuration</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3">
+                <TrialFeeConfig
+                  initialFeeType={activity.trial_fee_type}
+                  initialFeeAmountCents={activity.trial_fee_amount_cents}
+                  loading={submitting}
+                  onSave={async (config) => {
+                    setSubmitting(true);
+                    const { error } = await updateTrialFeeConfig(activityId, config);
+                    if (error) {
+                      toast({ title: 'Error saving fee config', variant: 'destructive' });
+                    } else {
+                      toast({ title: 'Fee configuration saved' });
+                      fetchActivity();
+                    }
+                    setSubmitting(false);
+                  }}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
-        )}
-      </Tabs>
+
+          {/* Members Tab */}
+          <TabsContent value="members" className="mt-3">
+            {organisation && (
+              <TrialMemberPicker
+                activityId={activityId}
+                orgId={organisation.id}
+                division={trialDivision}
+              />
+            )}
+          </TabsContent>
+
+          {/* Trial Dates */}
+          <TabsContent value="trial-dates" className="mt-3 space-y-2">
+            <div className="flex items-center justify-end">
+              <Button size="sm" className="h-7 text-xs gap-1" onClick={() => setAddTrialDateOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                Add Trial Date
+              </Button>
+            </div>
+
+            {trialEvents.length === 0 ? (
+              <EmptyState
+                icon={Calendar}
+                title="No trial dates yet"
+                description="Add trial dates for this division."
+                actionLabel="Add Trial Date"
+                onAction={() => setAddTrialDateOpen(true)}
+              />
+            ) : (
+              <div className="space-y-1.5">
+                {trialEvents.map((event) => (
+                  <TrialDateCard
+                    key={event.id}
+                    event={event}
+                    onEdit={(eventId) => setEditTrialDateId(eventId)}
+                    onDelete={async (eventId) => {
+                      const supabase = createClient();
+                      await supabase.from('activity_events').delete().eq('id', eventId);
+                      if (activity) fetchTrialData(activity);
+                    }}
+                    onViewAttendance={(eventId) => {
+                      setAttendanceEventFilter(eventId);
+                      setTrialsTab('attendance');
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Attendance */}
+          <TabsContent value="attendance" className="mt-3 space-y-2">
+            {trialEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Add trial dates first to track attendance.</p>
+            ) : (
+              <>
+                {/* Filter buttons */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={attendanceEventFilter === null ? 'default' : 'outline'}
+                    className="h-7 text-xs"
+                    onClick={() => setAttendanceEventFilter(null)}
+                  >
+                    All Sessions
+                  </Button>
+                  {trialEvents.map((event, i) => (
+                    <Button
+                      key={event.id}
+                      size="sm"
+                      variant={attendanceEventFilter === event.id ? 'default' : 'outline'}
+                      className="h-7 text-xs"
+                      onClick={() => setAttendanceEventFilter(event.id)}
+                    >
+                      Session {i + 1}
+                    </Button>
+                  ))}
+                </div>
+                {trialEvents
+                  .filter((e) => !attendanceEventFilter || e.id === attendanceEventFilter)
+                  .map((event, i) => (
+                  <div key={event.id} className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {event.date_time.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '').split('T')[0]}
+                      {event.venue ? ` — ${event.venue}` : ''}
+                    </p>
+                    <TrialAttendanceTracker
+                      eventId={event.id}
+                      activityId={activityId}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+          </TabsContent>
+
+          {/* Payments */}
+          <TabsContent value="payments" className="mt-4 space-y-4">
+            {activity.trial_fee_amount_cents && activity.trial_fee_amount_cents > 0 ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Fee: ${((activity.trial_fee_amount_cents ?? 0) / 100).toFixed(2)}{' '}
+                    ({activity.trial_fee_type === 'per_trial' ? 'per session' : 'one-time'})
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={submitting}
+                    onClick={async () => {
+                      if (!organisation?.id || !profile?.id) return;
+                      setSubmitting(true);
+                      // Get members from this trial's own teams
+                      const supabase = createClient();
+                      const { data: teamData } = await supabase
+                        .from('activity_teams')
+                        .select('id')
+                        .eq('activity_id', activityId);
+                      const teamIds = (teamData ?? []).map((t: { id: string }) => t.id);
+                      let memberIds: string[] = [];
+                      if (teamIds.length > 0) {
+                        const { data: tmData } = await supabase
+                          .from('activity_team_members')
+                          .select('member_id')
+                          .in('activity_team_id', teamIds);
+                        memberIds = [...new Set((tmData ?? []).map((t: { member_id: string }) => t.member_id))];
+                      }
+                      if (memberIds.length > 0) {
+                        const { error } = await generateTrialInvoices(
+                          organisation.id,
+                          memberIds,
+                          activity.trial_fee_type || 'one_time',
+                          activity.trial_fee_amount_cents || 0,
+                          profile.id,
+                          trialEvents.length
+                        );
+                        if (error) {
+                          toast({ title: 'Error generating invoices', variant: 'destructive' });
+                        } else {
+                          toast({ title: `${memberIds.length} invoice(s) generated` });
+                        }
+                      } else {
+                        toast({ title: 'No members found to invoice', variant: 'destructive' });
+                      }
+                      setSubmitting(false);
+                    }}
+                  >
+                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    <DollarSign className="h-4 w-4" />
+                    Generate Invoices
+                  </Button>
+                </div>
+                <TrialPaymentTable activityId={activityId} orgId={organisation?.id ?? ''} />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Configure a fee amount in the Overview tab to generate invoices.
+              </p>
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* ==================== STANDARD LAYOUT ==================== */
+        <Tabs defaultValue="overview">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="teams">Teams</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            {isCompetition && <TabsTrigger value="standings">Standings</TabsTrigger>}
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Left: Details */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <dl className="grid gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Mode</dt>
+                      <dd className="font-medium">
+                        {activity.participation_mode === 'organiser' ? 'Organising' : 'Participating'}
+                      </dd>
+                    </div>
+                    {isCompetition && activity.total_rounds != null && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Total Rounds</dt>
+                        <dd className="font-medium">{activity.total_rounds}</dd>
+                      </div>
+                    )}
+                    {isCompetition && activity.has_finals != null && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Finals Series</dt>
+                        <dd className="font-medium">{activity.has_finals ? 'Yes' : 'No'}</dd>
+                      </div>
+                    )}
+                    {isTournament && activity.pool_count != null && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Pools</dt>
+                        <dd className="font-medium">{activity.pool_count}</dd>
+                      </div>
+                    )}
+                    {(isTrainingSession || isTrainingCamp) && activity.default_venue && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Venue</dt>
+                        <dd className="font-medium">{activity.default_venue}</dd>
+                      </div>
+                    )}
+                    {isTrainingSession && activity.default_start_time && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Start Time</dt>
+                        <dd className="font-medium">{activity.default_start_time}</dd>
+                      </div>
+                    )}
+                    {isTrainingSession && activity.default_duration_minutes != null && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Duration</dt>
+                        <dd className="font-medium">{activity.default_duration_minutes} min</dd>
+                      </div>
+                    )}
+                    {isTrainingSession && activity.recurrence_rule && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Recurrence</dt>
+                        <dd className="font-medium">{activity.recurrence_rule}</dd>
+                      </div>
+                    )}
+                    {activity.parent_activity_id && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Linked Activity</dt>
+                        <dd className="font-medium">
+                          {allActivities.find((a) => a.id === activity.parent_activity_id)?.name ?? 'Unknown'}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </CardContent>
+              </Card>
+
+              {/* Right: Trials & Training links */}
+              {childActivities.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  {childActivities.some((a) => a.activity_type === 'trials') && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(getActivityListPath('trials', activityId))}
+                      className="flex items-center justify-between rounded-lg border-2 border-muted p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                    >
+                      <div>
+                        <p className="font-semibold">Trials</p>
+                        <p className="text-sm text-muted-foreground">
+                          {childActivities.filter((a) => a.activity_type === 'trials').length} division{childActivities.filter((a) => a.activity_type === 'trials').length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-sm px-3 py-1">
+                        View
+                      </Badge>
+                    </button>
+                  )}
+                  {childActivities.some((a) => a.activity_type === 'training_session') && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(getActivityListPath('training_session', activityId))}
+                      className="flex items-center justify-between rounded-lg border-2 border-muted p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                    >
+                      <div>
+                        <p className="font-semibold">Training</p>
+                        <p className="text-sm text-muted-foreground">
+                          {childActivities.filter((a) => a.activity_type === 'training_session').length} division{childActivities.filter((a) => a.activity_type === 'training_session').length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-sm px-3 py-1">
+                        View
+                      </Badge>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {activity.description && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Description</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {activity.description}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Teams Tab */}
+          <TabsContent value="teams" className="mt-4 space-y-4">
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCloneTeamOpen(true)}>
+                Clone from Activity
+              </Button>
+              <Button size="sm" className="gap-2" onClick={() => setCreateTeamOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Team
+              </Button>
+            </div>
+            {teams.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title="No teams yet"
+                description="Add a team to get started."
+                actionLabel="Add Team"
+                onAction={() => setCreateTeamOpen(true)}
+              />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {teams.map((team) => (
+                  <ActivityTeamCard key={team.id} team={team} activityId={activityId} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Schedule Tab */}
+          <TabsContent value="schedule" className="mt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button
+                  variant={scheduleView === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setScheduleView('list')}
+                >
+                  List
+                </Button>
+                <Button
+                  variant={scheduleView === 'calendar' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setScheduleView('calendar')}
+                >
+                  Calendar
+                </Button>
+              </div>
+              <Button size="sm" className="gap-2" onClick={() => setCreateEventOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Event
+              </Button>
+            </div>
+            {scheduleView === 'list' ? (
+              <EventList
+                events={events}
+                sportType={organisation?.sport_type}
+                emptyMessage="No events scheduled yet."
+              />
+            ) : (
+              <EventCalendar events={events} sportType={organisation?.sport_type} />
+            )}
+          </TabsContent>
+
+          {/* Standings Tab (competition only) */}
+          {isCompetition && (
+            <TabsContent value="standings" className="mt-4">
+              <StandingsTable
+                standings={standings}
+                loading={standingsLoading}
+                onRecalculate={async () => {
+                  setStandingsLoading(true);
+                  await recalculateStandings(activityId);
+                  await fetchStandings();
+                  setStandingsLoading(false);
+                }}
+              />
+            </TabsContent>
+          )}
+        </Tabs>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -433,8 +829,6 @@ export default function ActivityDetailPage() {
                 manager_id: data.managerId || null,
                 max_players: data.maxPlayers,
                 is_own_team: data.isOwnTeam,
-                pool_number: data.poolNumber ?? null,
-                seed_number: data.seedNumber ?? null,
               });
               if (error) {
                 toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -448,6 +842,7 @@ export default function ActivityDetailPage() {
             loading={submitting}
             profiles={profiles}
             showOwnTeamToggle={activity?.participation_mode === 'organiser'}
+            divisions={divisions}
           />
         </DialogContent>
       </Dialog>
@@ -507,6 +902,83 @@ export default function ActivityDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Add Trial Date Dialog */}
+      <Dialog open={addTrialDateOpen} onOpenChange={setAddTrialDateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Trial Date</DialogTitle>
+          </DialogHeader>
+          <TrialDateForm
+            venues={venues}
+            loading={submitting}
+            onSubmit={async (data) => {
+              setSubmitting(true);
+              const { error } = await createEvent(
+                activityId,
+                organisation!.id,
+                {
+                  date_time: data.dateTime,
+                  end_time: data.endTime || null,
+                  venue: data.venue || null,
+                  title: 'Trial Session',
+                }
+              );
+
+              if (error) {
+                toast({ title: 'Error creating trial date', variant: 'destructive' });
+              } else {
+                toast({ title: 'Trial date added' });
+                setAddTrialDateOpen(false);
+                if (activity) fetchTrialData(activity);
+              }
+              setSubmitting(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Trial Date Dialog */}
+      <Dialog
+        open={editTrialDateId !== null}
+        onOpenChange={(open) => { if (!open) setEditTrialDateId(null); }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Trial Date</DialogTitle>
+          </DialogHeader>
+          {editingTrialEvent && (
+            <TrialDateForm
+              venues={venues}
+              loading={submitting}
+              defaultValues={{
+                dateTime: toDateTimeLocal(editingTrialEvent.date_time),
+                endTime: editingTrialEvent.end_time
+                  ? toDateTimeLocal(editingTrialEvent.end_time)
+                  : '',
+                venue: editingTrialEvent.venue ?? '',
+              }}
+              onSubmit={async (data) => {
+                setSubmitting(true);
+                const { error } = await updateEvent(editingTrialEvent.id, {
+                  date_time: data.dateTime,
+                  end_time: data.endTime || null,
+                  venue: data.venue || null,
+                });
+
+                if (error) {
+                  toast({ title: 'Error updating trial date', variant: 'destructive' });
+                } else {
+                  toast({ title: 'Trial date updated' });
+                  setEditTrialDateId(null);
+                  if (activity) fetchTrialData(activity);
+                }
+                setSubmitting(false);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation */}
       <ConfirmDialog
         open={deleteOpen}
@@ -519,5 +991,18 @@ export default function ActivityDetailPage() {
         loading={submitting}
       />
     </div>
+  );
+}
+
+function ActivityDetailPageInner() {
+  const params = useParams();
+  return <ActivityDetailPageContent activityId={params.id as string} />;
+}
+
+export default function ActivityDetailPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ActivityDetailPageInner />
+    </Suspense>
   );
 }

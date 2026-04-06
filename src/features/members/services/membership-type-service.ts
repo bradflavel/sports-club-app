@@ -99,12 +99,22 @@ export async function updateMembershipType(
 export async function deleteMembershipType(id: string) {
   const supabase = createClient();
 
+  // Check if any members are using this type
+  const { count } = await supabase
+    .from('members')
+    .select('*', { count: 'exact', head: true })
+    .eq('membership_type_id', id);
+
+  if (count && count > 0) {
+    return { error: new Error(`Cannot delete: ${count} member${count !== 1 ? 's' : ''} are using this type. Deactivate it instead.`), memberCount: count };
+  }
+
   const { error } = await supabase
     .from('membership_types')
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .delete()
     .eq('id', id);
 
-  return { error };
+  return { error, memberCount: 0 };
 }
 
 export async function reorderMembershipTypes(orgId: string, orderedIds: string[]) {

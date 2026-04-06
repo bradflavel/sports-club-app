@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, Copy, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,10 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { SPORT_TYPE_OPTIONS, AU_STATE_OPTIONS } from '@/lib/constants';
 import { updateOrganisationDetails } from '@/features/club-profile/services/club-profile-service';
 import { createClient } from '@/lib/supabase/client';
+import { generateSlug, isValidSlug } from '@/lib/utils';
 import type { Organisation, SportType } from '@/lib/supabase/database.types';
 
 const TIMEZONE_OPTIONS = [
@@ -44,6 +46,8 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
   const [uploading, setUploading] = useState(false);
 
   const [name, setName] = useState(organisation.name);
+  const [slug, setSlug] = useState(organisation.slug);
+  const [slugError, setSlugError] = useState('');
   const [abn, setAbn] = useState(organisation.abn ?? '');
   const [abnEntityName, setAbnEntityName] = useState(organisation.abn_entity_name ?? '');
   const [sportType, setSportType] = useState<string>(organisation.sport_type);
@@ -55,6 +59,8 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
 
   useEffect(() => {
     setName(organisation.name);
+    setSlug(organisation.slug);
+    setSlugError('');
     setAbn(organisation.abn ?? '');
     setAbnEntityName(organisation.abn_entity_name ?? '');
     setSportType(organisation.sport_type);
@@ -103,10 +109,18 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
     }
   });
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const inviteUrl = `${appUrl}/join/${slug}`;
+
   const handleSave = async () => {
+    if (slug !== organisation.slug && !isValidSlug(slug)) {
+      setSlugError('Must be 3-50 characters, lowercase letters, numbers, and hyphens only');
+      return;
+    }
+    setSlugError('');
     setSaving(true);
     try {
-      const { error } = await updateOrganisationDetails(organisation.id, {
+      const payload: Record<string, unknown> = {
         name,
         abn: abn || null,
         abn_entity_name: abnEntityName || null,
@@ -116,9 +130,19 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
         secondary_colour: secondaryColour,
         timezone,
         state: state || null,
-      });
+      };
+      if (slug !== organisation.slug) {
+        payload.slug = slug;
+      }
+
+      const { error } = await updateOrganisationDetails(organisation.id, payload);
 
       if (error) {
+        if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+          setSlugError('This URL is already taken. Try a different one.');
+          setSaving(false);
+          return;
+        }
         toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
         return;
       }
@@ -289,6 +313,64 @@ export function ClubDetailsForm({ organisation, onSaved, hideSaveButton, saveRef
               <Input id="abn-entity-name" value={abnEntityName} onChange={(e) => setAbnEntityName(e.target.value)} placeholder="Registered business name" />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Invite Link */}
+      <Separator />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <LinkIcon className="h-4 w-4 text-muted-foreground" />
+          <h4 className="text-sm font-medium">Invite Link</h4>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Share this link with members so they can join your club.
+        </p>
+        <div className="flex items-center gap-2">
+          <Input
+            value={inviteUrl}
+            readOnly
+            className="font-mono text-xs h-8 bg-muted/30"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0"
+            onClick={() => {
+              navigator.clipboard.writeText(inviteUrl);
+              toast({ title: 'Invite link copied!' });
+            }}
+          >
+            <Copy className="mr-1.5 h-3.5 w-3.5" />
+            Copy
+          </Button>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">URL Slug</Label>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground shrink-0">{appUrl}/join/</span>
+            <Input
+              value={slug}
+              onChange={(e) => {
+                const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                setSlug(val);
+                setSlugError('');
+              }}
+              className="h-8 font-mono text-xs"
+              placeholder="your-club-name"
+            />
+          </div>
+          {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+          {slug !== organisation.slug && (
+            <button
+              type="button"
+              onClick={() => setSlug(generateSlug(name))}
+              className="text-xs text-muted-foreground hover:text-primary"
+            >
+              Regenerate from club name
+            </button>
+          )}
         </div>
       </div>
     </div>

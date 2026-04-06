@@ -75,6 +75,7 @@ export function ClubMembershipConfig({
 
   const [types, setTypes] = useState<MembershipTypeRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInactive, setShowInactive] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [form, setForm] = useState<TypeFormState>(emptyForm());
@@ -196,12 +197,15 @@ export function ClubMembershipConfig({
     if (!deleteTarget) return;
     setSaving(true);
     try {
-      const { error } = await deleteMembershipType(deleteTarget.id);
-      if (error) {
-        toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+      const result = await deleteMembershipType(deleteTarget.id);
+      if (result.error) {
+        const msg = result.error instanceof Error ? result.error.message : String(result.error);
+        toast({ title: 'Cannot delete', description: msg, variant: 'destructive' });
+        setDeleteTarget(null);
+        setSaving(false);
         return;
       }
-      toast({ title: 'Deleted', description: `${deleteTarget.name} removed.` });
+      toast({ title: 'Deleted', description: `${deleteTarget.name} permanently removed.` });
       setDeleteTarget(null);
       if (editingId === deleteTarget.id) {
         setEditingId(null);
@@ -360,7 +364,18 @@ export function ClubMembershipConfig({
       {/* Membership Types */}
       <div>
         <div className="flex items-center justify-between h-9 mb-3">
-          <h4 className="text-sm font-medium">Membership Types</h4>
+          <div className="flex items-center gap-3">
+            <h4 className="text-sm font-medium">Membership Types</h4>
+            {!addingNew && !editingId && types.some((t) => !t.is_active) && (
+              <button
+                type="button"
+                onClick={() => setShowInactive(!showInactive)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showInactive ? 'Hide inactive' : 'Show inactive'}
+              </button>
+            )}
+          </div>
           {!addingNew && !editingId && (
             <Button size="sm" variant="outline" onClick={startAdd}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -378,7 +393,7 @@ export function ClubMembershipConfig({
           renderForm()
         ) : (
           <div className="space-y-2">
-            {types.map((t) => (
+            {types.filter((t) => showInactive || t.is_active).map((t) => (
               <div key={t.id}>
                 {editingId === t.id ? (
                   renderForm()
@@ -468,7 +483,7 @@ export function ClubMembershipConfig({
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete Membership Type"
-        description={`This will deactivate "${deleteTarget?.name}". Existing members with this type will not be affected.`}
+        description={`This will permanently delete "${deleteTarget?.name}". If any members are using this type, the deletion will be blocked — deactivate it instead.`}
         variant="destructive"
         confirmLabel="Delete"
         onConfirm={handleDelete}

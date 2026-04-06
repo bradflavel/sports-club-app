@@ -16,8 +16,10 @@ import {
   updateTeamMember,
   removeTeamMember,
 } from '@/features/activity-teams/services/activity-team-service';
+import { getActivityById } from '@/features/activities/services/activity-service';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
+import { getActivityPath } from '@/lib/utils';
 import type { ActivityTeamWithDetails, ActivityTeamMemberWithDetails } from '@/features/activity-teams/types/activity-team-types';
 import type { SportType } from '@/lib/constants';
 
@@ -37,6 +39,7 @@ export default function ActivityTeamDetailPage() {
 
   const [team, setTeam] = useState<ActivityTeamWithDetails | null>(null);
   const [members, setMembers] = useState<ActivityTeamMemberWithDetails[]>([]);
+  const [backPath, setBackPath] = useState('/dashboard');
   const [loading, setLoading] = useState(true);
   const [addPlayerOpen, setAddPlayerOpen] = useState(false);
 
@@ -44,31 +47,34 @@ export default function ActivityTeamDetailPage() {
     const { data, error } = await getTeamById(teamId);
     if (error || !data) {
       toast({ title: 'Team not found', variant: 'destructive' });
-      router.push(`/activities/${activityId}`);
+      router.push('/dashboard');
       return;
     }
     setTeam(data);
-  }, [teamId, activityId, toast, router]);
+  }, [teamId, toast, router]);
 
   const fetchMembers = useCallback(async () => {
     const { data } = await getTeamMembers(teamId);
     setMembers(data ?? []);
   }, [teamId]);
 
+  const fetchBackPath = useCallback(async () => {
+    const { data } = await getActivityById(activityId);
+    if (data) {
+      setBackPath(getActivityPath(data.activity_type, data.slug));
+    }
+  }, [activityId]);
+
   useEffect(() => {
     if (!orgLoading) {
-      Promise.all([fetchTeam(), fetchMembers()]).finally(() => setLoading(false));
+      Promise.all([fetchTeam(), fetchMembers(), fetchBackPath()]).finally(() => setLoading(false));
     }
-  }, [orgLoading, fetchTeam, fetchMembers]);
+  }, [orgLoading, fetchTeam, fetchMembers, fetchBackPath]);
 
   async function handleRemoveMember(teamMemberId: string) {
     const { error } = await removeTeamMember(teamMemberId);
     if (error) {
-      toast({
-        title: 'Error removing player',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error removing player', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Player removed from team' });
       await fetchMembers();
@@ -82,11 +88,7 @@ export default function ActivityTeamDetailPage() {
       is_captain: data.isCaptain,
     });
     if (error) {
-      toast({
-        title: 'Error updating player',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error updating player', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Player updated' });
       fetchMembers();
@@ -101,27 +103,17 @@ export default function ActivityTeamDetailPage() {
   if (loading || orgLoading) return <PageSkeleton />;
   if (!team) return null;
 
-  const coachName = team.coach
-    ? `${team.coach.first_name} ${team.coach.last_name}`
-    : null;
-  const managerName = team.manager
-    ? `${team.manager.first_name} ${team.manager.last_name}`
-    : null;
-
+  const coachName = team.coach ? `${team.coach.first_name} ${team.coach.last_name}` : null;
+  const managerName = team.manager ? `${team.manager.first_name} ${team.manager.last_name}` : null;
   const sportType = (organisation?.sport_type ?? 'other') as SportType;
   const existingMemberIds = members.map((m) => m.member_id);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/activities/${activityId}`)}
-          className="gap-1"
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push(backPath)} className="gap-1">
           <ArrowLeft className="h-4 w-4" />
-          Back to Activity
+          Back
         </Button>
       </div>
 
@@ -131,22 +123,11 @@ export default function ActivityTeamDetailPage() {
           <div className="flex flex-wrap gap-1.5">
             {team.division && <Badge variant="secondary">{team.division}</Badge>}
             {team.age_group && <Badge variant="outline">{team.age_group}</Badge>}
-            {!team.is_own_team && (
-              <Badge variant="destructive">External</Badge>
-            )}
-            {team.pool_number != null && (
-              <Badge variant="outline">Pool {team.pool_number}</Badge>
-            )}
-            {team.seed_number != null && (
-              <Badge variant="outline">Seed {team.seed_number}</Badge>
-            )}
+            {!team.is_own_team && <Badge variant="destructive">External</Badge>}
           </div>
         }
         description={
-          [
-            coachName ? `Coach: ${coachName}` : null,
-            managerName ? `Manager: ${managerName}` : null,
-          ]
+          [coachName ? `Coach: ${coachName}` : null, managerName ? `Manager: ${managerName}` : null]
             .filter(Boolean)
             .join(' \u00B7 ') || undefined
         }
@@ -154,29 +135,16 @@ export default function ActivityTeamDetailPage() {
 
       <Tabs defaultValue="roster">
         <TabsList>
-          <TabsTrigger value="roster">
-            Roster ({members.length}/{team.max_players})
-          </TabsTrigger>
+          <TabsTrigger value="roster">Roster ({members.length}/{team.max_players})</TabsTrigger>
         </TabsList>
-
         <TabsContent value="roster" className="mt-4 space-y-4">
           <div className="flex justify-end">
-            <Button
-              size="sm"
-              className="gap-2"
-              onClick={() => setAddPlayerOpen(true)}
-              disabled={members.length >= team.max_players}
-            >
+            <Button size="sm" className="gap-2" onClick={() => setAddPlayerOpen(true)} disabled={members.length >= team.max_players}>
               <UserPlus className="h-4 w-4" />
               Add Player
             </Button>
           </div>
-          <ActivityRosterTable
-            members={members}
-            onRemove={handleRemoveMember}
-            onEdit={handleEditMember}
-            sportType={sportType}
-          />
+          <ActivityRosterTable members={members} onRemove={handleRemoveMember} onEdit={handleEditMember} sportType={sportType} />
         </TabsContent>
       </Tabs>
 

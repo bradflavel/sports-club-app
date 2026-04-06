@@ -29,7 +29,7 @@ export function ActivityDetailHeader({ activity }: ActivityDetailHeaderProps) {
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Calendar className="h-4 w-4" />
         <span>
-          {formatDate(activity.start_date)}
+          {activity.start_date ? formatDate(activity.start_date) : activity.first_round_date ? formatDate(activity.first_round_date) : 'No date set'}
           {activity.end_date ? ` - ${formatDate(activity.end_date)}` : ''}
         </span>
       </div>
