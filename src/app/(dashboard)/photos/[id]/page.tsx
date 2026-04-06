@@ -73,7 +73,14 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleDeletePhoto = async (photoId: string) => {
     const supabase = createClient();
+    // Get file URL before deleting
+    const { data: photo } = await supabase.from('photo_items').select('file_url').eq('id', photoId).single();
     await supabase.from('photo_items').delete().eq('id', photoId);
+    // Remove the storage object
+    if (photo?.file_url) {
+      const path = photo.file_url.split('/storage/v1/object/public/photos/')[1];
+      if (path) await supabase.storage.from('photos').remove([decodeURIComponent(path)]);
+    }
     toast({ title: 'Photo deleted' });
     fetchData();
   };

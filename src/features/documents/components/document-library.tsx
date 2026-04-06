@@ -99,10 +99,17 @@ export function DocumentLibrary() {
 
   const handleDelete = async (id: string) => {
     const supabase = createClient();
+    // Get file URL before deleting the record
+    const { data: doc } = await supabase.from('documents').select('file_url').eq('id', id).single();
     const { error } = await supabase.from('documents').delete().eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return;
+    }
+    // Remove the storage object
+    if (doc?.file_url) {
+      const path = doc.file_url.split('/storage/v1/object/public/documents/')[1];
+      if (path) await supabase.storage.from('documents').remove([decodeURIComponent(path)]);
     }
     toast({ title: 'Document deleted' });
     fetchDocuments();

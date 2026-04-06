@@ -78,15 +78,13 @@ export default function JoinPage() {
       return;
     }
 
-    // Update profile with org
+    // Update profile with org via trusted RPC
     const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        organisation_id: organisation.id,
-        role: 'member',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+      .rpc('assign_user_to_organisation', {
+        p_user_id: user.id,
+        p_org_id: organisation.id,
+        p_role: 'member',
+      });
 
     if (profileError) {
       setError(profileError.message);
