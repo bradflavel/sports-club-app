@@ -45,6 +45,11 @@ export type StaffStatus = 'active' | 'inactive' | 'on_leave' | 'pending';
 export type StaffFieldType = 'text' | 'textarea' | 'url' | 'date' | 'select' | 'boolean' | 'file' | 'email' | 'phone';
 export type AccreditationStatus = 'current' | 'expired' | 'pending' | 'revoked';
 
+// Shop types
+export type ShopOrderStatus = 'pending' | 'paid' | 'ready_for_pickup' | 'collected' | 'cancelled' | 'refunded';
+export type ProductType = 'physical' | 'digital';
+export type DiscountType = 'percentage' | 'fixed_amount';
+
 export interface Organisation {
   id: string;
   name: string;
@@ -711,6 +716,162 @@ export interface StaffInvite {
 export interface StaffInviteWithDetails extends StaffInvite {
   staff_type: StaffType;
   creator: Profile;
+}
+
+// Shop interfaces
+export interface ProductCategory {
+  id: string;
+  organisation_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Product {
+  id: string;
+  organisation_id: string;
+  category_id: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  product_type: ProductType;
+  price_cents: number;
+  compare_at_price_cents: number | null;
+  image_urls: string[];
+  digital_file_urls: string[] | null;
+  is_active: boolean;
+  is_restricted: boolean;
+  is_preorder: boolean;
+  preorder_available_date: string | null;
+  low_stock_threshold: number;
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductWithCategory extends Product {
+  category: ProductCategory | null;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  size: string | null;
+  colour: string | null;
+  sku: string | null;
+  stock_quantity: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductWithVariants extends ProductWithCategory {
+  variants: ProductVariant[];
+}
+
+export interface ProductAccessRule {
+  id: string;
+  product_id: string;
+  allowed_role: UserRole | null;
+  allowed_team_id: string | null;
+  created_at: string;
+}
+
+export interface CartItem {
+  id: string;
+  profile_id: string;
+  organisation_id: string;
+  product_id: string;
+  variant_id: string;
+  quantity: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CartItemWithDetails extends CartItem {
+  product: Product;
+  variant: ProductVariant;
+}
+
+export interface DiscountCode {
+  id: string;
+  organisation_id: string;
+  code: string;
+  description: string | null;
+  discount_type: DiscountType;
+  discount_value: number;
+  min_order_cents: number | null;
+  max_discount_cents: number | null;
+  applies_to_product_id: string | null;
+  applies_to_category_id: string | null;
+  max_uses: number | null;
+  max_uses_per_user: number | null;
+  times_used: number;
+  starts_at: string | null;
+  expires_at: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShopOrder {
+  id: string;
+  organisation_id: string;
+  profile_id: string;
+  order_number: string;
+  status: ShopOrderStatus;
+  subtotal_cents: number;
+  discount_cents: number;
+  total_cents: number;
+  discount_code_id: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  collection_qr_token: string;
+  notes: string | null;
+  collected_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  variant_id: string | null;
+  product_name: string;
+  variant_label: string | null;
+  product_type: ProductType;
+  quantity: number;
+  unit_price_cents: number;
+  created_at: string;
+}
+
+export interface ShopOrderWithItems extends ShopOrder {
+  items: OrderItem[];
+  discount_code: DiscountCode | null;
+}
+
+export interface DigitalDownload {
+  id: string;
+  order_item_id: string;
+  profile_id: string;
+  product_id: string;
+  download_count: number;
+  max_downloads: number;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface DigitalDownloadWithProduct extends DigitalDownload {
+  product: Product;
+  order_item: OrderItem;
 }
 
 export type Json =

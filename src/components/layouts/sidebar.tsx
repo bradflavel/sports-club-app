@@ -23,6 +23,7 @@ import {
   Tent,
   ClipboardCheck,
   PartyPopper,
+  ShoppingBag,
   UserCog,
   type LucideIcon,
 } from 'lucide-react';
@@ -77,6 +78,7 @@ const toolsNav: NavItem[] = [
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/photos', label: 'Photos', icon: Camera },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
+  { href: '/shop', label: 'Shop', icon: ShoppingBag },
 ];
 
 interface SidebarProps {

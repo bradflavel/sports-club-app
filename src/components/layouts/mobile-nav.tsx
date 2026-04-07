@@ -13,6 +13,7 @@ import {
   FileText,
   Camera,
   Megaphone,
+  ShoppingBag,
   Settings,
   Trophy,
   Award,
@@ -85,6 +86,7 @@ export function MobileNav() {
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/photos', label: 'Photos', icon: Camera },
     { href: '/announcements', label: 'Announcements', icon: Megaphone },
+    { href: '/shop', label: 'Shop', icon: ShoppingBag },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
