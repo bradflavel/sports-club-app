@@ -12,7 +12,7 @@ import { PaymentTable } from '@/features/payments/components/payment-table';
 import { PaymentSummaryCards } from '@/features/payments/components/payment-summary-cards';
 import { PaymentFilters } from '@/features/payments/components/payment-filters';
 import { createClient } from '@/lib/supabase/client';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -23,7 +23,7 @@ import type { MemberWithProfile } from '@/features/members/types/member-types';
 import type { PaymentStatus } from '@/lib/supabase/database.types';
 
 export default function PaymentsPage() {
-  const { profile, loading: userLoading } = useUser();
+  const { profile, loading: userLoading } = useAuth();
   const { organisation, loading: orgLoading } = useOrganisation();
   const { toast } = useToast();
 

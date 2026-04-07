@@ -10,11 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { createClient } from '@/lib/supabase/client';
 import { ATTENDANCE_STATUS_OPTIONS } from '@/lib/constants';
 import {
   getAttendanceForEvent,
   markAttendance,
+  getTeamMembersForActivityTeams,
 } from '@/features/activity-events/services/attendance-service';
 import type {
   AttendanceStatus,
@@ -54,15 +54,8 @@ export function AttendanceTracker({
 
   const fetchTeamMembers = useCallback(async () => {
     if (activityTeamIds.length === 0) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('activity_team_members')
-      .select('*, member:members(*, profile:profiles(*))')
-      .in('activity_team_id', activityTeamIds)
-      .order('joined_at', { ascending: true });
-    setTeamMembers(
-      (data as unknown as ActivityTeamMemberWithDetails[]) ?? []
-    );
+    const { data } = await getTeamMembersForActivityTeams(activityTeamIds);
+    setTeamMembers(data ?? []);
   }, [activityTeamIds]);
 
   const fetchAttendance = useCallback(async () => {

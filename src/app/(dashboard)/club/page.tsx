@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { PageHeader } from '@/components/shared/page-header';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
@@ -29,7 +29,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import type { ClubVenue, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 export default function ClubProfilePage() {
-  const { profile, loading: userLoading } = useUser();
+  const { profile, loading: userLoading } = useAuth();
   const { organisation, loading: orgLoading } = useOrganisation();
   const searchParams = useSearchParams();
   const router = useRouter();

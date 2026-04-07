@@ -19,11 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { createClient } from '@/lib/supabase/client';
 import { SPORT_CONFIGS } from '@/lib/constants';
 import type { SportType } from '@/lib/constants';
 import type { MemberWithProfile } from '@/lib/supabase/database.types';
-import { addTeamMember } from '@/features/activity-teams/services/activity-team-service';
+import {
+  addTeamMember,
+  getAvailableMembersForTeam,
+} from '@/features/activity-teams/services/activity-team-service';
 
 interface AddPlayerDialogProps {
   open: boolean;
@@ -62,21 +64,8 @@ export function ActivityAddPlayerDialog({
   const fetchAvailableMembers = useCallback(async () => {
     if (!orgId) return;
     setFetchingMembers(true);
-
-    const supabase = createClient();
-
-    let query = supabase
-      .from('members')
-      .select('*, profile:profiles(*)')
-      .eq('organisation_id', orgId)
-      .eq('membership_status', 'active');
-
-    if (existingMemberIds.length > 0) {
-      query = query.not('id', 'in', `(${existingMemberIds.join(',')})`);
-    }
-
-    const { data } = await query.order('profile(first_name)');
-    setAvailableMembers((data as unknown as MemberWithProfile[]) ?? []);
+    const { data } = await getAvailableMembersForTeam(orgId, existingMemberIds);
+    setAvailableMembers(data ?? []);
     setFetchingMembers(false);
   }, [orgId, existingMemberIds]);
 

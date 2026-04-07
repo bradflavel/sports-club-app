@@ -1,32 +1,45 @@
 import { createClient } from '@/lib/supabase/server';
-import { z } from 'zod/v4';
-import { csvImportRowSchema } from '@/features/members/schemas/member-schemas';
 import type {
   Member,
   MemberWithProfile,
   MembershipStatus,
   MembershipType,
 } from '@/lib/supabase/database.types';
-import type {
-  MemberFilters,
-  MemberFormData,
-  CsvImportResult,
-  CsvImportRow,
-} from '@/features/members/types/member-types';
+import type { MemberFilters } from '@/features/members/types/member-types';
 
 export async function getMembers(
   orgId: string,
   filters?: MemberFilters & { page?: number; pageSize?: number }
 ) {
   const supabase = await createClient();
+  const searchTerm = filters?.search?.trim().toLowerCase();
+
+  // If searching, find matching profile IDs first so we can filter in SQL
+  let matchingProfileIds: string[] | null = null;
+  if (searchTerm) {
+    const { data: matchingProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('organisation_id', orgId)
+      .or(
+        `first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
+      );
+
+    matchingProfileIds = matchingProfiles?.map((p) => p.id) ?? [];
+    if (matchingProfileIds.length === 0) {
+      return { data: [], count: 0, error: null };
+    }
+  }
 
   let query = supabase
     .from('members')
     .select('*, profile:profiles(*)', { count: 'exact' })
     .eq('organisation_id', orgId);
 
-  // Search is applied after fetch — PostgREST .or() on joined tables nulls the join
-  const searchTerm = filters?.search;
+  // Apply search filter (profile IDs from above)
+  if (matchingProfileIds) {
+    query = query.in('profile_id', matchingProfileIds);
+  }
 
   if (filters?.membershipType && filters.membershipType.length > 0) {
     query = query.in('membership_type', filters.membershipType as MembershipType[]);
@@ -37,8 +50,7 @@ export async function getMembers(
   }
 
   if (filters?.teamId) {
-    const supabaseInner = await createClient();
-    const { data: teamMemberIds } = await supabaseInner
+    const { data: teamMemberIds } = await supabase
       .from('team_members')
       .select('member_id')
       .eq('team_id', filters.teamId);
@@ -53,6 +65,7 @@ export async function getMembers(
     }
   }
 
+  // Paginate AFTER all filters are applied
   const page = filters?.page ?? 1;
   const pageSize = filters?.pageSize ?? 20;
   const from = (page - 1) * pageSize;
@@ -62,21 +75,7 @@ export async function getMembers(
 
   const { data, error, count } = await query;
 
-  let results = data as unknown as MemberWithProfile[] | null;
-  if (results && searchTerm) {
-    const q = searchTerm.toLowerCase();
-    results = results.filter((m) => {
-      const p = m.profile;
-      if (!p) return false;
-      return (
-        p.first_name?.toLowerCase().includes(q) ||
-        p.last_name?.toLowerCase().includes(q) ||
-        p.email?.toLowerCase().includes(q)
-      );
-    });
-  }
-
-  return { data: results, count: searchTerm ? results?.length ?? 0 : count, error };
+  return { data: data as unknown as MemberWithProfile[] | null, count, error };
 }
 
 export async function getMemberById(id: string) {
@@ -188,66 +187,6 @@ export async function getMembersByTeam(teamId: string) {
   return { data: data as unknown as MemberWithProfile[] | null, error };
 }
 
-export function parseCsvData(csvText: string): CsvImportResult {
-  const lines = csvText.trim().split('\n');
-
-  if (lines.length < 2) {
-    return {
-      success: [],
-      errors: [],
-      totalRows: 0,
-      successCount: 0,
-      errorCount: 0,
-    };
-  }
-
-  const headers = lines[0]
-    .split(',')
-    .map((h) => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/"/g, ''));
-
-  const success: CsvImportRow[] = [];
-  const errors: CsvImportResult['errors'] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = line.split(',').map((v) => v.trim().replace(/"/g, ''));
-    const rawRow: Record<string, string> = {};
-
-    headers.forEach((header, index) => {
-      rawRow[header] = values[index] ?? '';
-    });
-
-    const result = csvImportRowSchema.safeParse({
-      first_name: rawRow['first_name'] || rawRow['firstname'] || rawRow['first name'],
-      last_name: rawRow['last_name'] || rawRow['lastname'] || rawRow['last name'],
-      email: rawRow['email'],
-      phone: rawRow['phone'] || undefined,
-      date_of_birth: rawRow['date_of_birth'] || rawRow['dob'] || undefined,
-      membership_type: rawRow['membership_type'] || rawRow['type'],
-    });
-
-    if (result.success) {
-      success.push(result.data);
-    } else {
-      errors.push({
-        row: i,
-        data: rawRow,
-        errors: result.error.issues.map((issue) => issue.message),
-      });
-    }
-  }
-
-  return {
-    success,
-    errors,
-    totalRows: lines.length - 1,
-    successCount: success.length,
-    errorCount: errors.length,
-  };
-}
-
 export async function exportMembersCsv(orgId: string): Promise<{ data: string | null; error: unknown }> {
   const supabase = await createClient();
 
@@ -266,27 +205,14 @@ export async function exportMembersCsv(orgId: string): Promise<{ data: string | 
   }
 
   const headers = [
-    'first_name',
-    'last_name',
-    'email',
-    'phone',
-    'date_of_birth',
-    'membership_type',
-    'membership_status',
-    'registration_date',
-    'expiry_date',
+    'first_name', 'last_name', 'email', 'phone', 'date_of_birth',
+    'membership_type', 'membership_status', 'registration_date', 'expiry_date',
   ];
 
   const rows = (members as unknown as MemberWithProfile[]).map((m) => [
-    m.profile.first_name,
-    m.profile.last_name,
-    m.profile.email,
-    m.profile.phone ?? '',
-    m.profile.date_of_birth ?? '',
-    m.membership_type,
-    m.membership_status,
-    m.registration_date,
-    m.expiry_date ?? '',
+    m.profile.first_name, m.profile.last_name, m.profile.email,
+    m.profile.phone ?? '', m.profile.date_of_birth ?? '',
+    m.membership_type, m.membership_status, m.registration_date, m.expiry_date ?? '',
   ]);
 
   const csvLines = [

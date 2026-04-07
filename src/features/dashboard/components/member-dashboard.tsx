@@ -9,34 +9,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { UpcomingEventsWidget } from './upcoming-fixtures-widget';
 import { RecentAnnouncementsWidget } from './recent-announcements-widget';
 import { MemberStatsWidget } from './member-stats-widget';
-import { createClient } from '@/lib/supabase/client';
+import { getMemberDashboardDataClient } from '@/features/dashboard/services/dashboard-client-service';
 import { calculateAge } from '@/lib/format';
 import type {
   Profile,
   ActivityEventWithTeams,
   Payment,
   AnnouncementWithAuthor,
-  MemberWithProfile,
-  MemberGuardian,
 } from '@/lib/supabase/database.types';
+import type {
+  TeamSummary,
+  DependentInfo,
+} from '@/features/dashboard/services/dashboard-client-service';
 
 interface MemberDashboardProps {
   profile: Profile;
-}
-
-interface TeamSummary {
-  id: string;
-  name: string;
-  division: string | null;
-  activityName?: string;
-}
-
-interface DependentInfo {
-  id: string;
-  name: string;
-  age: number | null;
-  relationship: string;
-  outstandingPayments: number;
 }
 
 export function MemberDashboard({ profile }: MemberDashboardProps) {
@@ -57,117 +44,18 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
 
     async function fetchData() {
       setLoading(true);
-      const supabase = createClient();
-      const orgId = profile.organisation_id!;
-
-      // Get member record
-      const { data: memberRecord } = await supabase
-        .from('members')
-        .select('id')
-        .eq('profile_id', profile.id)
-        .eq('organisation_id', orgId)
-        .single();
-
-      if (!memberRecord) {
-        setLoading(false);
-        return;
+      const { data } = await getMemberDashboardDataClient(
+        profile.id,
+        profile.organisation_id!,
+        (dob) => calculateAge(dob)
+      );
+      if (data) {
+        setTeams(data.teams);
+        setEvents(data.events);
+        setPayments(data.payments);
+        setAnnouncements(data.announcements);
+        setDependents(data.dependents);
       }
-
-      const memberId = memberRecord.id;
-
-      // Get activity team memberships
-      const { data: activityTeamMemberships } = await supabase
-        .from('activity_team_members')
-        .select('activity_team_id')
-        .eq('member_id', memberId);
-
-      const activityTeamIds = (activityTeamMemberships ?? []).map((tm) => tm.activity_team_id);
-
-      const [
-        { data: teamRows },
-        { data: eventRows },
-        { data: paymentRows },
-        { data: announcementRows },
-      ] = await Promise.all([
-        activityTeamIds.length > 0
-          ? supabase
-              .from('activity_teams')
-              .select('id, name, division, activity:activities(name)')
-              .in('id', activityTeamIds)
-          : Promise.resolve({ data: [] }),
-
-        activityTeamIds.length > 0
-          ? supabase
-              .from('activity_events')
-              .select('*, home_team:activity_teams!activity_events_home_team_id_fkey(*), away_team:activity_teams!activity_events_away_team_id_fkey(*), activity:activities(*)')
-              .eq('organisation_id', orgId)
-              .or(activityTeamIds.map((id) => `home_team_id.eq.${id}`).join(',') + ',' + activityTeamIds.map((id) => `away_team_id.eq.${id}`).join(','))
-              .eq('status', 'scheduled')
-              .gte('date_time', new Date().toISOString())
-              .order('date_time', { ascending: true })
-              .limit(5)
-          : Promise.resolve({ data: [] }),
-
-        supabase
-          .from('payments')
-          .select('*')
-          .eq('member_id', memberId)
-          .in('payment_status', ['pending', 'overdue'])
-          .order('due_date', { ascending: true }),
-
-        supabase
-          .from('announcements')
-          .select('*, author:profiles(*)')
-          .eq('organisation_id', orgId)
-          .order('published_at', { ascending: false })
-          .limit(3),
-      ]);
-
-      const mappedTeams: TeamSummary[] = (teamRows ?? []).map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        name: row.name as string,
-        division: row.division as string | null,
-        activityName: (row.activity as { name: string } | null)?.name ?? undefined,
-      }));
-
-      setTeams(mappedTeams);
-      setEvents((eventRows ?? []) as unknown as ActivityEventWithTeams[]);
-      setPayments((paymentRows ?? []) as Payment[]);
-      setAnnouncements((announcementRows ?? []) as unknown as AnnouncementWithAuthor[]);
-
-      // Check if user is a guardian and fetch dependents
-      const { data: guardianLinks } = await supabase
-        .from('member_guardians')
-        .select('*, minor:members!minor_member_id(*, profile:profiles(*))')
-        .eq('guardian_member_id', memberId);
-
-      if (guardianLinks && guardianLinks.length > 0) {
-        const depInfos: DependentInfo[] = [];
-        for (const link of guardianLinks) {
-          const minor = (link as unknown as { minor: MemberWithProfile }).minor;
-          // Get outstanding payments for this dependent
-          const { data: depPayments } = await supabase
-            .from('payments')
-            .select('amount_cents')
-            .eq('member_id', minor.id)
-            .in('payment_status', ['pending', 'overdue']);
-
-          const outstanding = (depPayments ?? []).reduce(
-            (sum: number, p: { amount_cents: number }) => sum + p.amount_cents,
-            0
-          );
-
-          depInfos.push({
-            id: minor.id,
-            name: `${minor.profile.first_name} ${minor.profile.last_name}`,
-            age: minor.profile.date_of_birth ? calculateAge(minor.profile.date_of_birth) : null,
-            relationship: (link as unknown as MemberGuardian).relationship.replace(/_/g, ' '),
-            outstandingPayments: outstanding,
-          });
-        }
-        setDependents(depInfos);
-      }
-
       setLoading(false);
     }
 

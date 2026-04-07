@@ -10,7 +10,7 @@ import { InvoiceForm } from '@/features/payments/components/invoice-form';
 import { BulkInvoiceForm } from '@/features/payments/components/bulk-invoice-form';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { dollarsToCents } from '@/lib/format';
 import type { PaymentInput, BulkInvoiceInput } from '@/features/payments/schemas/payment-schemas';
@@ -22,7 +22,7 @@ type Mode = 'single' | 'bulk';
 export default function NewPaymentPage() {
   const router = useRouter();
   const { organisation } = useOrganisation();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [mode, setMode] = useState<Mode>('single');

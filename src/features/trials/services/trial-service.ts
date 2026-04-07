@@ -4,6 +4,9 @@ import type {
   Activity,
   ActivityEvent,
   MemberWithProfile,
+  AttendanceStatus,
+  ActivityEventAttendance,
+  PaymentWithMember,
 } from '@/lib/supabase/database.types';
 
 /**
@@ -107,6 +110,222 @@ export async function updateTrialFeeConfig(
       updated_at: new Date().toISOString(),
     })
     .eq('id', activityId);
+
+  return { error };
+}
+
+// ---------------------------------------------------------------------------
+// Roster management (used by TrialMemberPicker)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get or create the roster team for a trial activity.
+ * Returns the team id.
+ */
+export async function getOrCreateRosterTeam(
+  activityId: string,
+  orgId: string,
+  division?: CompetitionDivision | null
+): Promise<{ teamId: string | null; error: unknown }> {
+  const supabase = createClient();
+
+  const { data: teams } = await supabase
+    .from('activity_teams')
+    .select('id')
+    .eq('activity_id', activityId)
+    .limit(1);
+
+  if (teams && teams.length > 0) {
+    return { teamId: (teams[0] as { id: string }).id, error: null };
+  }
+
+  const { data: newTeam, error } = await supabase
+    .from('activity_teams')
+    .insert({
+      activity_id: activityId,
+      organisation_id: orgId,
+      name: 'Roster',
+      division: division?.name ?? null,
+      age_group: division?.age_group ?? null,
+      coach_id: null,
+      manager_id: null,
+      max_players: 999,
+      is_own_team: true,
+      source_team_id: null,
+      pool_number: null,
+      seed_number: null,
+    })
+    .select('id')
+    .single();
+
+  return { teamId: (newTeam as { id: string } | null)?.id ?? null, error };
+}
+
+export async function getRosterMembers(teamId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('activity_team_members')
+    .select('id, member_id, member:members(*, profile:profiles(*))')
+    .eq('activity_team_id', teamId);
+
+  return { data, error };
+}
+
+export async function removeRosterMember(teamMemberId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('activity_team_members')
+    .delete()
+    .eq('id', teamMemberId);
+
+  return { error };
+}
+
+export async function addRosterMembers(
+  teamId: string,
+  memberIds: string[]
+) {
+  const supabase = createClient();
+
+  const inserts = memberIds.map((memberId) => ({
+    activity_team_id: teamId,
+    member_id: memberId,
+    jersey_number: null as number | null,
+    position: null as string | null,
+    is_captain: false,
+  }));
+
+  const { error } = await supabase.from('activity_team_members').insert(inserts);
+  return { error };
+}
+
+export async function getActiveMembersForOrg(orgId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('members')
+    .select('*, profile:profiles(*)')
+    .eq('organisation_id', orgId)
+    .eq('membership_status', 'active')
+    .order('profile(first_name)');
+
+  return { data: data as unknown as MemberWithProfile[] | null, error };
+}
+
+// ---------------------------------------------------------------------------
+// Trial attendance (used by TrialAttendanceTracker)
+// ---------------------------------------------------------------------------
+
+export async function getTrialTeamIds(activityId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('activity_teams')
+    .select('id')
+    .eq('activity_id', activityId);
+
+  return { data: (data ?? []).map((t: { id: string }) => t.id), error };
+}
+
+export async function getTrialRosterMembersForTeams(teamIds: string[]) {
+  const supabase = createClient();
+
+  if (teamIds.length === 0) return { data: [] as MemberWithProfile[], error: null };
+
+  const { data, error } = await supabase
+    .from('activity_team_members')
+    .select('member_id, member:members(*, profile:profiles(*))')
+    .in('activity_team_id', teamIds);
+
+  if (error || !data) return { data: null, error };
+
+  const seen = new Set<string>();
+  const unique: MemberWithProfile[] = [];
+  for (const tm of data as unknown as { member_id: string; member: MemberWithProfile }[]) {
+    if (!seen.has(tm.member_id)) {
+      seen.add(tm.member_id);
+      unique.push(tm.member);
+    }
+  }
+
+  return { data: unique, error: null };
+}
+
+export async function getAttendanceForEventClient(eventId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('activity_event_attendance')
+    .select('*')
+    .eq('event_id', eventId);
+
+  return { data: data as unknown as ActivityEventAttendance[] | null, error };
+}
+
+export async function upsertTrialAttendance(
+  eventId: string,
+  memberId: string,
+  status: AttendanceStatus,
+  existingId?: string
+): Promise<{ id: string | null; error: unknown }> {
+  const supabase = createClient();
+
+  if (existingId) {
+    const { error } = await supabase
+      .from('activity_event_attendance')
+      .update({
+        status,
+        checked_in_at: status === 'attended' ? new Date().toISOString() : null,
+      })
+      .eq('id', existingId);
+    return { id: existingId, error };
+  }
+
+  const { data, error } = await supabase
+    .from('activity_event_attendance')
+    .insert({
+      event_id: eventId,
+      member_id: memberId,
+      status,
+      checked_in_at: status === 'attended' ? new Date().toISOString() : null,
+      notes: null,
+    })
+    .select('id')
+    .single();
+
+  return { id: (data as { id: string } | null)?.id ?? null, error };
+}
+
+// ---------------------------------------------------------------------------
+// Trial payments (used by TrialPaymentTable)
+// ---------------------------------------------------------------------------
+
+export async function getTrialFeePayments(orgId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*, member:members(*, profile:profiles(*))')
+    .eq('organisation_id', orgId)
+    .eq('payment_type', 'trial_fee')
+    .order('created_at', { ascending: false });
+
+  return { data: data as unknown as PaymentWithMember[] | null, error };
+}
+
+export async function markTrialPaymentAsPaid(paymentId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('payments')
+    .update({
+      payment_status: 'paid',
+      paid_at: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', paymentId);
 
   return { error };
 }

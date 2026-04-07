@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { MemberForm } from '@/features/members/components/member-form';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { linkGuardianToMinor } from '@/features/members/services/guardian-service';
 import type { MemberInput } from '@/features/members/schemas/member-schemas';
@@ -18,7 +18,7 @@ import type { GuardianRelationship } from '@/lib/supabase/database.types';
 export default function NewMemberPage() {
   const router = useRouter();
   const { organisation } = useOrganisation();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -62,6 +62,7 @@ export default function NewMemberPage() {
             avatar_url: null,
             organisation_id: organisation.id,
             role: 'member' as const,
+            preferred_name: null,
             emergency_contact_name: data.emergencyContactName || null,
             emergency_contact_phone: data.emergencyContactPhone || null,
           })

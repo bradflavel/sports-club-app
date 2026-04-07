@@ -40,6 +40,11 @@ export type EventStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled
 export type AttendanceStatus = 'attending' | 'not_attending' | 'maybe' | 'attended' | 'absent' | 'late';
 export type TournamentStage = 'pool' | 'quarterfinal' | 'semifinal' | 'final' | 'third_place' | 'round_robin';
 
+// Staff system types
+export type StaffStatus = 'active' | 'inactive' | 'on_leave' | 'pending';
+export type StaffFieldType = 'text' | 'textarea' | 'url' | 'date' | 'select' | 'boolean' | 'file' | 'email' | 'phone';
+export type AccreditationStatus = 'current' | 'expired' | 'pending' | 'revoked';
+
 export interface Organisation {
   id: string;
   name: string;
@@ -97,6 +102,7 @@ export interface ClubVenue {
   name: string;
   address: string | null;
   is_primary: boolean;
+  categories: string[];
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -138,6 +144,7 @@ export interface Profile {
   avatar_url: string | null;
   organisation_id: string | null;
   role: UserRole;
+  preferred_name: string | null;
   gender?: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
@@ -350,6 +357,82 @@ export interface TrialEventDivision {
   created_at: string;
 }
 
+// Club Events
+export type ClubEventType = 'social' | 'fundraiser' | 'agm' | 'presentation' | 'meeting' | 'other';
+export type ClubEventStatus = 'draft' | 'published' | 'cancelled' | 'completed';
+export type ClubEventRegistrationStatus = 'registered' | 'waitlisted' | 'cancelled' | 'approved' | 'attended';
+
+export interface ClubEvent {
+  id: string;
+  organisation_id: string;
+  name: string;
+  description: string | null;
+  event_type: ClubEventType;
+  status: ClubEventStatus;
+  start_time: string;
+  end_time: string | null;
+  venue_id: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  max_attendees: number | null;
+  enable_waitlist: boolean;
+  cost_cents: number;
+  cost_description: string | null;
+  registration_required: boolean;
+  registration_opens: string | null;
+  registration_closes: string | null;
+  registration_requires_approval: boolean;
+  allow_guests: boolean;
+  max_guests_per_member: number;
+  collect_dietary_requirements: boolean;
+  food_provided: boolean;
+  alcohol_provided: boolean;
+  is_adults_only: boolean;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  is_members_only: boolean;
+  cover_image_url: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClubEventWithVenue extends ClubEvent {
+  venue: ClubVenue | null;
+  registration_count?: number;
+}
+
+export interface ClubEventRegistration {
+  id: string;
+  event_id: string;
+  member_id: string;
+  status: ClubEventRegistrationStatus;
+  guest_count: number;
+  guest_names: string | null;
+  dietary_requirements: string | null;
+  notes: string | null;
+  registered_at: string;
+  approved_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClubEventRegistrationWithMember extends ClubEventRegistration {
+  member: MemberWithProfile;
+}
+
+export const VENUE_CATEGORY_OPTIONS = [
+  { value: 'game', label: 'Game Venue' },
+  { value: 'training', label: 'Training Venue' },
+  { value: 'meeting', label: 'Meeting Space' },
+  { value: 'event', label: 'Event Space' },
+  { value: 'function', label: 'Function Centre' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 // Activity system interfaces
 export interface OrganisationModule {
   id: string;
@@ -524,177 +607,2717 @@ export interface ActivityStandingWithTeam extends ActivityStanding {
   team: ActivityTeam;
 }
 
-export interface Database {
+// Staff system interfaces
+export interface StaffType {
+  id: string;
+  organisation_id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  requires_wwc: boolean;
+  is_publicly_visible: boolean;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffTypeField {
+  id: string;
+  staff_type_id: string;
+  organisation_id: string;
+  name: string;
+  field_type: StaffFieldType;
+  is_required: boolean;
+  options: string[] | null;
+  placeholder: string | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffRecord {
+  id: string;
+  profile_id: string;
+  organisation_id: string;
+  staff_type_id: string;
+  member_id: string | null;
+  status: StaffStatus;
+  position: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffWithProfile extends StaffRecord {
+  profile: Profile;
+  staff_type: StaffType;
+}
+
+export interface StaffFieldValue {
+  id: string;
+  staff_id: string;
+  staff_type_field_id: string;
+  organisation_id: string;
+  value: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffAccreditation {
+  id: string;
+  staff_id: string;
+  organisation_id: string;
+  name: string;
+  issuing_body: string | null;
+  credential_number: string | null;
+  issue_date: string | null;
+  expiry_date: string | null;
+  status: AccreditationStatus;
+  document_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffAccreditationTemplate {
+  id: string;
+  staff_type_id: string;
+  organisation_id: string;
+  name: string;
+  issuing_body: string | null;
+  is_required: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffInvite {
+  id: string;
+  organisation_id: string;
+  staff_type_id: string;
+  token: string;
+  email: string | null;
+  created_by: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  is_single_use: boolean;
+  created_at: string;
+}
+
+export interface StaffInviteWithDetails extends StaffInvite {
+  staff_type: StaffType;
+  creator: Profile;
+}
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      organisations: {
-        Row: Organisation & Record<string, unknown>;
-        Insert: Omit<Organisation, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Organisation, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      profiles: {
-        Row: Profile & Record<string, unknown>;
-        Insert: Omit<Profile, 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Profile, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      members: {
-        Row: Member & Record<string, unknown>;
-        Insert: Omit<Member, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Member, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      teams: {
-        Row: Team & Record<string, unknown>;
-        Insert: Omit<Team, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Team, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      team_members: {
-        Row: TeamMember & Record<string, unknown>;
-        Insert: Omit<TeamMember, 'id' | 'joined_at'> & Record<string, unknown>;
-        Update: Partial<Omit<TeamMember, 'id'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      seasons: {
-        Row: Season & Record<string, unknown>;
-        Insert: Omit<Season, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Season, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      fixtures: {
-        Row: Fixture & Record<string, unknown>;
-        Insert: Omit<Fixture, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Fixture, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      payments: {
-        Row: Payment & Record<string, unknown>;
-        Insert: Omit<Payment, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Payment, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      documents: {
-        Row: Document & Record<string, unknown>;
-        Insert: Omit<Document, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Document, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      photo_albums: {
-        Row: PhotoAlbum & Record<string, unknown>;
-        Insert: Omit<PhotoAlbum, 'id' | 'created_at' | 'updated_at' | 'photo_count'> & Record<string, unknown>;
-        Update: Partial<Omit<PhotoAlbum, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      photo_items: {
-        Row: PhotoItem & Record<string, unknown>;
-        Insert: Omit<PhotoItem, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<PhotoItem, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      announcements: {
-        Row: Announcement & Record<string, unknown>;
-        Insert: Omit<Announcement, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Announcement, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      member_guardians: {
-        Row: MemberGuardian & Record<string, unknown>;
-        Insert: Omit<MemberGuardian, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<MemberGuardian, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      organisation_modules: {
-        Row: OrganisationModule & Record<string, unknown>;
-        Insert: Omit<OrganisationModule, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<OrganisationModule, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
       activities: {
-        Row: Activity & Record<string, unknown>;
-        Insert: Omit<Activity, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<Activity, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      activity_teams: {
-        Row: ActivityTeam & Record<string, unknown>;
-        Insert: Omit<ActivityTeam, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<ActivityTeam, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      activity_team_members: {
-        Row: ActivityTeamMember & Record<string, unknown>;
-        Insert: Omit<ActivityTeamMember, 'id' | 'joined_at'> & Record<string, unknown>;
-        Update: Partial<Omit<ActivityTeamMember, 'id'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      activity_events: {
-        Row: ActivityEvent & Record<string, unknown>;
-        Insert: Omit<ActivityEvent, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<ActivityEvent, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          commitment_level: string | null
+          competition_division_id: string | null
+          created_at: string | null
+          default_duration_minutes: number | null
+          default_start_time: string | null
+          default_venue: string | null
+          description: string | null
+          end_date: string | null
+          finals_description: string | null
+          finals_start_date: string | null
+          finals_weeks: number | null
+          first_round_date: string | null
+          has_byes: boolean | null
+          has_finals: boolean | null
+          host_name: string | null
+          host_type: string | null
+          id: string
+          is_current: boolean
+          is_draft: boolean | null
+          name: string
+          organisation_id: string
+          parent_activity_id: string | null
+          participation_mode: Database["public"]["Enums"]["participation_mode"]
+          pool_count: number | null
+          recurrence_rule: string | null
+          registration_closes: string | null
+          registration_opens: string | null
+          round_dates: Json | null
+          schedule_frequency: string | null
+          season_fee_amount_cents: number | null
+          season_fee_max_cents: number | null
+          season_fee_min_cents: number | null
+          season_fee_type: string | null
+          skill_level: string | null
+          slug: string
+          start_date: string | null
+          total_rounds: number | null
+          training_details: string | null
+          training_required: boolean | null
+          trial_date: string | null
+          trial_fee_amount_cents: number | null
+          trial_fee_type: string | null
+          trials_required: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          commitment_level?: string | null
+          competition_division_id?: string | null
+          created_at?: string | null
+          default_duration_minutes?: number | null
+          default_start_time?: string | null
+          default_venue?: string | null
+          description?: string | null
+          end_date?: string | null
+          finals_description?: string | null
+          finals_start_date?: string | null
+          finals_weeks?: number | null
+          first_round_date?: string | null
+          has_byes?: boolean | null
+          has_finals?: boolean | null
+          host_name?: string | null
+          host_type?: string | null
+          id?: string
+          is_current?: boolean
+          is_draft?: boolean | null
+          name: string
+          organisation_id: string
+          parent_activity_id?: string | null
+          participation_mode?: Database["public"]["Enums"]["participation_mode"]
+          pool_count?: number | null
+          recurrence_rule?: string | null
+          registration_closes?: string | null
+          registration_opens?: string | null
+          round_dates?: Json | null
+          schedule_frequency?: string | null
+          season_fee_amount_cents?: number | null
+          season_fee_max_cents?: number | null
+          season_fee_min_cents?: number | null
+          season_fee_type?: string | null
+          skill_level?: string | null
+          slug: string
+          start_date?: string | null
+          total_rounds?: number | null
+          training_details?: string | null
+          training_required?: boolean | null
+          trial_date?: string | null
+          trial_fee_amount_cents?: number | null
+          trial_fee_type?: string | null
+          trials_required?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          commitment_level?: string | null
+          competition_division_id?: string | null
+          created_at?: string | null
+          default_duration_minutes?: number | null
+          default_start_time?: string | null
+          default_venue?: string | null
+          description?: string | null
+          end_date?: string | null
+          finals_description?: string | null
+          finals_start_date?: string | null
+          finals_weeks?: number | null
+          first_round_date?: string | null
+          has_byes?: boolean | null
+          has_finals?: boolean | null
+          host_name?: string | null
+          host_type?: string | null
+          id?: string
+          is_current?: boolean
+          is_draft?: boolean | null
+          name?: string
+          organisation_id?: string
+          parent_activity_id?: string | null
+          participation_mode?: Database["public"]["Enums"]["participation_mode"]
+          pool_count?: number | null
+          recurrence_rule?: string | null
+          registration_closes?: string | null
+          registration_opens?: string | null
+          round_dates?: Json | null
+          schedule_frequency?: string | null
+          season_fee_amount_cents?: number | null
+          season_fee_max_cents?: number | null
+          season_fee_min_cents?: number | null
+          season_fee_type?: string | null
+          skill_level?: string | null
+          slug?: string
+          start_date?: string | null
+          total_rounds?: number | null
+          training_details?: string | null
+          training_required?: boolean | null
+          trial_date?: string | null
+          trial_fee_amount_cents?: number | null
+          trial_fee_type?: string | null
+          trials_required?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_competition_division_id_fkey"
+            columns: ["competition_division_id"]
+            isOneToOne: false
+            referencedRelation: "competition_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_parent_activity_id_fkey"
+            columns: ["parent_activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_event_attendance: {
-        Row: ActivityEventAttendance & Record<string, unknown>;
-        Insert: Omit<ActivityEventAttendance, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<ActivityEventAttendance, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
+        Row: {
+          checked_in_at: string | null
+          created_at: string | null
+          event_id: string
+          id: string
+          member_id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["attendance_status"]
+        }
+        Insert: {
+          checked_in_at?: string | null
+          created_at?: string | null
+          event_id: string
+          id?: string
+          member_id: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["attendance_status"]
+        }
+        Update: {
+          checked_in_at?: string | null
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          member_id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["attendance_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_event_attendance_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "activity_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_event_attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_events: {
+        Row: {
+          activity_id: string
+          away_score: number | null
+          away_team_id: string | null
+          bracket_position: number | null
+          created_at: string | null
+          date_time: string
+          day_number: number | null
+          end_time: string | null
+          home_score: number | null
+          home_team_id: string | null
+          id: string
+          is_home: boolean | null
+          notes: string | null
+          opponent_name: string | null
+          organisation_id: string
+          pool_number: number | null
+          round_number: number | null
+          session_number: number | null
+          status: Database["public"]["Enums"]["event_status"]
+          title: string | null
+          tournament_stage:
+            | Database["public"]["Enums"]["tournament_stage"]
+            | null
+          updated_at: string | null
+          venue: string | null
+        }
+        Insert: {
+          activity_id: string
+          away_score?: number | null
+          away_team_id?: string | null
+          bracket_position?: number | null
+          created_at?: string | null
+          date_time: string
+          day_number?: number | null
+          end_time?: string | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          is_home?: boolean | null
+          notes?: string | null
+          opponent_name?: string | null
+          organisation_id: string
+          pool_number?: number | null
+          round_number?: number | null
+          session_number?: number | null
+          status?: Database["public"]["Enums"]["event_status"]
+          title?: string | null
+          tournament_stage?:
+            | Database["public"]["Enums"]["tournament_stage"]
+            | null
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Update: {
+          activity_id?: string
+          away_score?: number | null
+          away_team_id?: string | null
+          bracket_position?: number | null
+          created_at?: string | null
+          date_time?: string
+          day_number?: number | null
+          end_time?: string | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          is_home?: boolean | null
+          notes?: string | null
+          opponent_name?: string | null
+          organisation_id?: string
+          pool_number?: number | null
+          round_number?: number | null
+          session_number?: number | null
+          status?: Database["public"]["Enums"]["event_status"]
+          title?: string | null
+          tournament_stage?:
+            | Database["public"]["Enums"]["tournament_stage"]
+            | null
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_events_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_events_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "activity_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_events_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "activity_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_events_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_standings: {
-        Row: ActivityStanding & Record<string, unknown>;
-        Insert: Omit<ActivityStanding, 'id'> & Record<string, unknown>;
-        Update: Partial<Omit<ActivityStanding, 'id'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      competition_divisions: {
-        Row: CompetitionDivision & Record<string, unknown>;
-        Insert: Omit<CompetitionDivision, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<CompetitionDivision, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      trial_event_divisions: {
-        Row: TrialEventDivision & Record<string, unknown>;
-        Insert: Omit<TrialEventDivision, 'id' | 'created_at'> & Record<string, unknown>;
-        Update: Partial<Omit<TrialEventDivision, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      membership_types: {
-        Row: MembershipTypeRecord & Record<string, unknown>;
-        Insert: Omit<MembershipTypeRecord, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<MembershipTypeRecord, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
+        Row: {
+          activity_id: string
+          bonus_points: number
+          draws: number
+          id: string
+          ladder_points: number
+          losses: number
+          played: number
+          points_against: number
+          points_for: number
+          team_id: string
+          updated_at: string | null
+          wins: number
+        }
+        Insert: {
+          activity_id: string
+          bonus_points?: number
+          draws?: number
+          id?: string
+          ladder_points?: number
+          losses?: number
+          played?: number
+          points_against?: number
+          points_for?: number
+          team_id: string
+          updated_at?: string | null
+          wins?: number
+        }
+        Update: {
+          activity_id?: string
+          bonus_points?: number
+          draws?: number
+          id?: string
+          ladder_points?: number
+          losses?: number
+          played?: number
+          points_against?: number
+          points_for?: number
+          team_id?: string
+          updated_at?: string | null
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_standings_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_standings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "activity_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_team_members: {
+        Row: {
+          activity_team_id: string
+          id: string
+          is_captain: boolean
+          jersey_number: number | null
+          joined_at: string | null
+          member_id: string
+          position: string | null
+        }
+        Insert: {
+          activity_team_id: string
+          id?: string
+          is_captain?: boolean
+          jersey_number?: number | null
+          joined_at?: string | null
+          member_id: string
+          position?: string | null
+        }
+        Update: {
+          activity_team_id?: string
+          id?: string
+          is_captain?: boolean
+          jersey_number?: number | null
+          joined_at?: string | null
+          member_id?: string
+          position?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_team_members_activity_team_id_fkey"
+            columns: ["activity_team_id"]
+            isOneToOne: false
+            referencedRelation: "activity_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_team_members_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_teams: {
+        Row: {
+          activity_id: string
+          age_group: string | null
+          coach_id: string | null
+          created_at: string | null
+          division: string | null
+          id: string
+          is_own_team: boolean
+          manager_id: string | null
+          max_players: number
+          name: string
+          organisation_id: string
+          pool_number: number | null
+          seed_number: number | null
+          source_team_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          activity_id: string
+          age_group?: string | null
+          coach_id?: string | null
+          created_at?: string | null
+          division?: string | null
+          id?: string
+          is_own_team?: boolean
+          manager_id?: string | null
+          max_players?: number
+          name: string
+          organisation_id: string
+          pool_number?: number | null
+          seed_number?: number | null
+          source_team_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          activity_id?: string
+          age_group?: string | null
+          coach_id?: string | null
+          created_at?: string | null
+          division?: string | null
+          id?: string
+          is_own_team?: boolean
+          manager_id?: string | null
+          max_players?: number
+          name?: string
+          organisation_id?: string
+          pool_number?: number | null
+          seed_number?: number | null
+          source_team_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_teams_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_teams_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_teams_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_teams_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_teams_source_team_id_fkey"
+            columns: ["source_team_id"]
+            isOneToOne: false
+            referencedRelation: "activity_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_pinned: boolean
+          organisation_id: string
+          published_at: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          organisation_id: string
+          published_at?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          organisation_id?: string
+          published_at?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_event_registrations: {
+        Row: {
+          approved_at: string | null
+          cancelled_at: string | null
+          created_at: string | null
+          dietary_requirements: string | null
+          event_id: string
+          guest_count: number
+          guest_names: string | null
+          id: string
+          member_id: string
+          notes: string | null
+          registered_at: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          dietary_requirements?: string | null
+          event_id: string
+          guest_count?: number
+          guest_names?: string | null
+          id?: string
+          member_id: string
+          notes?: string | null
+          registered_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          dietary_requirements?: string | null
+          event_id?: string
+          guest_count?: number
+          guest_names?: string | null
+          id?: string
+          member_id?: string
+          notes?: string | null
+          registered_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_registrations_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_event_targets: {
+        Row: {
+          activity_team_id: string
+          created_at: string | null
+          event_id: string
+          id: string
+        }
+        Insert: {
+          activity_team_id: string
+          created_at?: string | null
+          event_id: string
+          id?: string
+        }
+        Update: {
+          activity_team_id?: string
+          created_at?: string | null
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_targets_activity_team_id_fkey"
+            columns: ["activity_team_id"]
+            isOneToOne: false
+            referencedRelation: "activity_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_targets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_events: {
+        Row: {
+          alcohol_provided: boolean
+          allow_guests: boolean
+          collect_dietary_requirements: boolean
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          cost_cents: number
+          cost_description: string | null
+          cover_image_url: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          enable_waitlist: boolean
+          end_time: string | null
+          event_type: string
+          food_provided: boolean
+          id: string
+          is_adults_only: boolean
+          is_members_only: boolean
+          max_attendees: number | null
+          max_guests_per_member: number
+          name: string
+          notes: string | null
+          organisation_id: string
+          registration_closes: string | null
+          registration_opens: string | null
+          registration_required: boolean
+          registration_requires_approval: boolean
+          start_time: string
+          status: string
+          updated_at: string | null
+          venue_address: string | null
+          venue_id: string | null
+          venue_name: string | null
+        }
+        Insert: {
+          alcohol_provided?: boolean
+          allow_guests?: boolean
+          collect_dietary_requirements?: boolean
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          cost_cents?: number
+          cost_description?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          enable_waitlist?: boolean
+          end_time?: string | null
+          event_type?: string
+          food_provided?: boolean
+          id?: string
+          is_adults_only?: boolean
+          is_members_only?: boolean
+          max_attendees?: number | null
+          max_guests_per_member?: number
+          name: string
+          notes?: string | null
+          organisation_id: string
+          registration_closes?: string | null
+          registration_opens?: string | null
+          registration_required?: boolean
+          registration_requires_approval?: boolean
+          start_time: string
+          status?: string
+          updated_at?: string | null
+          venue_address?: string | null
+          venue_id?: string | null
+          venue_name?: string | null
+        }
+        Update: {
+          alcohol_provided?: boolean
+          allow_guests?: boolean
+          collect_dietary_requirements?: boolean
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          cost_cents?: number
+          cost_description?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          enable_waitlist?: boolean
+          end_time?: string | null
+          event_type?: string
+          food_provided?: boolean
+          id?: string
+          is_adults_only?: boolean
+          is_members_only?: boolean
+          max_attendees?: number | null
+          max_guests_per_member?: number
+          name?: string
+          notes?: string | null
+          organisation_id?: string
+          registration_closes?: string | null
+          registration_opens?: string | null
+          registration_required?: boolean
+          registration_requires_approval?: boolean
+          start_time?: string
+          status?: string
+          updated_at?: string | null
+          venue_address?: string | null
+          venue_id?: string | null
+          venue_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_events_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "club_venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_venues: {
-        Row: ClubVenue & Record<string, unknown>;
-        Insert: Omit<ClubVenue, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<ClubVenue, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-      membership_fee_schedule: {
-        Row: MembershipFeeSchedule & Record<string, unknown>;
-        Insert: Omit<MembershipFeeSchedule, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
-        Update: Partial<Omit<MembershipFeeSchedule, 'id' | 'created_at'>> & Record<string, unknown>;
-        Relationships: [];
-      };
-    };
-    Views: Record<string, { Row: Record<string, unknown>; Relationships: [] }>;
-    Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>;
+        Row: {
+          address: string | null
+          categories: string[]
+          created_at: string | null
+          id: string
+          is_primary: boolean
+          name: string
+          notes: string | null
+          organisation_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          categories?: string[]
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean
+          name: string
+          notes?: string | null
+          organisation_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          categories?: string[]
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean
+          name?: string
+          notes?: string | null
+          organisation_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_venues_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_divisions: {
+        Row: {
+          activity_id: string
+          age_group: string | null
+          created_at: string | null
+          display_order: number
+          gender: string | null
+          id: string
+          max_teams: number | null
+          name: string
+        }
+        Insert: {
+          activity_id: string
+          age_group?: string | null
+          created_at?: string | null
+          display_order?: number
+          gender?: string | null
+          id?: string
+          max_teams?: number | null
+          name: string
+        }
+        Update: {
+          activity_id?: string
+          age_group?: string | null
+          created_at?: string | null
+          display_order?: number
+          gender?: string | null
+          id?: string
+          max_teams?: number | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_divisions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          category: Database["public"]["Enums"]["document_category"]
+          created_at: string | null
+          description: string | null
+          file_name: string
+          file_size_bytes: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          is_public: boolean
+          organisation_id: string
+          title: string
+          uploaded_by: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["document_category"]
+          created_at?: string | null
+          description?: string | null
+          file_name: string
+          file_size_bytes?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          is_public?: boolean
+          organisation_id: string
+          title: string
+          uploaded_by: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["document_category"]
+          created_at?: string | null
+          description?: string | null
+          file_name?: string
+          file_size_bytes?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          is_public?: boolean
+          organisation_id?: string
+          title?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixtures: {
+        Row: {
+          away_score: number | null
+          created_at: string | null
+          date_time: string
+          home_score: number | null
+          id: string
+          is_home: boolean
+          notes: string | null
+          opponent_name: string
+          organisation_id: string
+          round_number: number | null
+          season_id: string | null
+          status: Database["public"]["Enums"]["fixture_status"]
+          team_id: string
+          updated_at: string | null
+          venue: string | null
+        }
+        Insert: {
+          away_score?: number | null
+          created_at?: string | null
+          date_time: string
+          home_score?: number | null
+          id?: string
+          is_home?: boolean
+          notes?: string | null
+          opponent_name: string
+          organisation_id: string
+          round_number?: number | null
+          season_id?: string | null
+          status?: Database["public"]["Enums"]["fixture_status"]
+          team_id: string
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Update: {
+          away_score?: number | null
+          created_at?: string | null
+          date_time?: string
+          home_score?: number | null
+          id?: string
+          is_home?: boolean
+          notes?: string | null
+          opponent_name?: string
+          organisation_id?: string
+          round_number?: number | null
+          season_id?: string | null
+          status?: Database["public"]["Enums"]["fixture_status"]
+          team_id?: string
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixtures_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_guardians: {
+        Row: {
+          consent_date: string | null
+          created_at: string | null
+          guardian_member_id: string
+          id: string
+          is_primary: boolean
+          minor_member_id: string
+          parental_consent_given: boolean
+          relationship: Database["public"]["Enums"]["guardian_relationship"]
+          updated_at: string | null
+        }
+        Insert: {
+          consent_date?: string | null
+          created_at?: string | null
+          guardian_member_id: string
+          id?: string
+          is_primary?: boolean
+          minor_member_id: string
+          parental_consent_given?: boolean
+          relationship?: Database["public"]["Enums"]["guardian_relationship"]
+          updated_at?: string | null
+        }
+        Update: {
+          consent_date?: string | null
+          created_at?: string | null
+          guardian_member_id?: string
+          id?: string
+          is_primary?: boolean
+          minor_member_id?: string
+          parental_consent_given?: boolean
+          relationship?: Database["public"]["Enums"]["guardian_relationship"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_guardians_guardian_member_id_fkey"
+            columns: ["guardian_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_guardians_minor_member_id_fkey"
+            columns: ["minor_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          created_at: string | null
+          dietary_requirements: string | null
+          expiry_date: string | null
+          id: string
+          medical_conditions: string | null
+          membership_status: Database["public"]["Enums"]["membership_status"]
+          membership_type: Database["public"]["Enums"]["membership_type"]
+          membership_type_id: string | null
+          notes: string | null
+          organisation_id: string
+          profile_id: string
+          registration_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dietary_requirements?: string | null
+          expiry_date?: string | null
+          id?: string
+          medical_conditions?: string | null
+          membership_status?: Database["public"]["Enums"]["membership_status"]
+          membership_type?: Database["public"]["Enums"]["membership_type"]
+          membership_type_id?: string | null
+          notes?: string | null
+          organisation_id: string
+          profile_id: string
+          registration_date?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dietary_requirements?: string | null
+          expiry_date?: string | null
+          id?: string
+          medical_conditions?: string | null
+          membership_status?: Database["public"]["Enums"]["membership_status"]
+          membership_type?: Database["public"]["Enums"]["membership_type"]
+          membership_type_id?: string | null
+          notes?: string | null
+          organisation_id?: string
+          profile_id?: string
+          registration_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_membership_type_id_fkey"
+            columns: ["membership_type_id"]
+            isOneToOne: false
+            referencedRelation: "membership_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_types: {
+        Row: {
+          auto_renewal: boolean
+          created_at: string | null
+          default_duration_months: number | null
+          description: string | null
+          display_order: number
+          fee_cents: number | null
+          grace_period_days: number
+          has_expiry: boolean
+          id: string
+          is_active: boolean
+          name: string
+          organisation_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_renewal?: boolean
+          created_at?: string | null
+          default_duration_months?: number | null
+          description?: string | null
+          display_order?: number
+          fee_cents?: number | null
+          grace_period_days?: number
+          has_expiry?: boolean
+          id?: string
+          is_active?: boolean
+          name: string
+          organisation_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_renewal?: boolean
+          created_at?: string | null
+          default_duration_months?: number | null
+          description?: string | null
+          display_order?: number
+          fee_cents?: number | null
+          grace_period_days?: number
+          has_expiry?: boolean
+          id?: string
+          is_active?: boolean
+          name?: string
+          organisation_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_types_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisation_modules: {
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string | null
+          display_order: number
+          id: string
+          is_enabled: boolean
+          organisation_id: string
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_enabled?: boolean
+          organisation_id: string
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_enabled?: boolean
+          organisation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_modules_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisations: {
+        Row: {
+          abn: string | null
+          abn_entity_name: string | null
+          address: string | null
+          affiliated_body: string | null
+          affiliation_number: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_bsb: string | null
+          bank_name: string | null
+          child_safety_policy_url: string | null
+          code_of_conduct_url: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          default_payment_terms_days: number | null
+          details_reviewed_at: string | null
+          facebook_url: string | null
+          id: string
+          instagram_url: string | null
+          insurance_policy_number: string | null
+          insurance_provider: string | null
+          is_gst_registered: boolean | null
+          late_fee_cents: number | null
+          logo_url: string | null
+          minimum_age: number | null
+          name: string
+          primary_colour: string | null
+          privacy_policy_url: string | null
+          registration_consent_text: string | null
+          registration_open: boolean | null
+          secondary_colour: string | null
+          slug: string
+          sport_type: Database["public"]["Enums"]["sport_type"]
+          state: string | null
+          terms_conditions_url: string | null
+          tiktok_url: string | null
+          timezone: string | null
+          updated_at: string | null
+          website: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          abn?: string | null
+          abn_entity_name?: string | null
+          address?: string | null
+          affiliated_body?: string | null
+          affiliation_number?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_bsb?: string | null
+          bank_name?: string | null
+          child_safety_policy_url?: string | null
+          code_of_conduct_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          default_payment_terms_days?: number | null
+          details_reviewed_at?: string | null
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          insurance_policy_number?: string | null
+          insurance_provider?: string | null
+          is_gst_registered?: boolean | null
+          late_fee_cents?: number | null
+          logo_url?: string | null
+          minimum_age?: number | null
+          name: string
+          primary_colour?: string | null
+          privacy_policy_url?: string | null
+          registration_consent_text?: string | null
+          registration_open?: boolean | null
+          secondary_colour?: string | null
+          slug: string
+          sport_type: Database["public"]["Enums"]["sport_type"]
+          state?: string | null
+          terms_conditions_url?: string | null
+          tiktok_url?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          abn?: string | null
+          abn_entity_name?: string | null
+          address?: string | null
+          affiliated_body?: string | null
+          affiliation_number?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_bsb?: string | null
+          bank_name?: string | null
+          child_safety_policy_url?: string | null
+          code_of_conduct_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          default_payment_terms_days?: number | null
+          details_reviewed_at?: string | null
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          insurance_policy_number?: string | null
+          insurance_provider?: string | null
+          is_gst_registered?: boolean | null
+          late_fee_cents?: number | null
+          logo_url?: string | null
+          minimum_age?: number | null
+          name?: string
+          primary_colour?: string | null
+          privacy_policy_url?: string | null
+          registration_consent_text?: string | null
+          registration_open?: boolean | null
+          secondary_colour?: string | null
+          slug?: string
+          sport_type?: Database["public"]["Enums"]["sport_type"]
+          state?: string | null
+          terms_conditions_url?: string | null
+          tiktok_url?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          description: string | null
+          due_date: string | null
+          id: string
+          member_id: string
+          notes: string | null
+          organisation_id: string
+          paid_at: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          payment_type: Database["public"]["Enums"]["payment_type"]
+          receipt_url: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          member_id: string
+          notes?: string | null
+          organisation_id: string
+          paid_at?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_type: Database["public"]["Enums"]["payment_type"]
+          receipt_url?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          member_id?: string
+          notes?: string | null
+          organisation_id?: string
+          paid_at?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_type?: Database["public"]["Enums"]["payment_type"]
+          receipt_url?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_albums: {
+        Row: {
+          cover_photo_url: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          organisation_id: string
+          photo_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          cover_photo_url?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          organisation_id: string
+          photo_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cover_photo_url?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          organisation_id?: string
+          photo_count?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_albums_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_albums_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_items: {
+        Row: {
+          album_id: string
+          caption: string | null
+          created_at: string | null
+          file_url: string
+          height: number | null
+          id: string
+          thumbnail_url: string | null
+          uploaded_by: string
+          width: number | null
+        }
+        Insert: {
+          album_id: string
+          caption?: string | null
+          created_at?: string | null
+          file_url: string
+          height?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          uploaded_by: string
+          width?: number | null
+        }
+        Update: {
+          album_id?: string
+          caption?: string | null
+          created_at?: string | null
+          file_url?: string
+          height?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          uploaded_by?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_items_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "photo_albums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_items_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          last_name: string
+          organisation_id: string | null
+          phone: string | null
+          preferred_name: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_name: string
+          gender?: string | null
+          id: string
+          last_name: string
+          organisation_id?: string | null
+          phone?: string | null
+          preferred_name?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          last_name?: string
+          organisation_id?: string | null
+          phone?: string | null
+          preferred_name?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasons: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          is_current: boolean
+          name: string
+          organisation_id: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          is_current?: boolean
+          name: string
+          organisation_id: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          is_current?: boolean
+          name?: string
+          organisation_id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasons_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string
+          member_id: string | null
+          notes: string | null
+          organisation_id: string
+          position: string | null
+          profile_id: string
+          staff_type_id: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["staff_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          organisation_id: string
+          position?: string | null
+          profile_id: string
+          staff_type_id: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["staff_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          organisation_id?: string
+          position?: string | null
+          profile_id?: string
+          staff_type_id?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["staff_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_staff_type_id_fkey"
+            columns: ["staff_type_id"]
+            isOneToOne: false
+            referencedRelation: "staff_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_accreditation_templates: {
+        Row: {
+          created_at: string | null
+          display_order: number
+          id: string
+          is_required: boolean
+          issuing_body: string | null
+          name: string
+          organisation_id: string
+          staff_type_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_required?: boolean
+          issuing_body?: string | null
+          name: string
+          organisation_id: string
+          staff_type_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_required?: boolean
+          issuing_body?: string | null
+          name?: string
+          organisation_id?: string
+          staff_type_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_accreditation_templates_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_accreditation_templates_staff_type_id_fkey"
+            columns: ["staff_type_id"]
+            isOneToOne: false
+            referencedRelation: "staff_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_accreditations: {
+        Row: {
+          created_at: string | null
+          credential_number: string | null
+          document_url: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          issuing_body: string | null
+          name: string
+          notes: string | null
+          organisation_id: string
+          staff_id: string
+          status: Database["public"]["Enums"]["accreditation_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credential_number?: string | null
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_body?: string | null
+          name: string
+          notes?: string | null
+          organisation_id: string
+          staff_id: string
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credential_number?: string | null
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_body?: string | null
+          name?: string
+          notes?: string | null
+          organisation_id?: string
+          staff_id?: string
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_accreditations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_accreditations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_field_values: {
+        Row: {
+          created_at: string | null
+          id: string
+          organisation_id: string
+          staff_id: string
+          staff_type_field_id: string
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organisation_id: string
+          staff_id: string
+          staff_type_field_id: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organisation_id?: string
+          staff_id?: string
+          staff_type_field_id?: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_field_values_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_field_values_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_field_values_staff_type_field_id_fkey"
+            columns: ["staff_type_field_id"]
+            isOneToOne: false
+            referencedRelation: "staff_type_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string | null
+          created_by: string
+          email: string | null
+          expires_at: string
+          id: string
+          is_single_use: boolean
+          organisation_id: string
+          staff_type_id: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string | null
+          created_by: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          is_single_use?: boolean
+          organisation_id: string
+          staff_type_id: string
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string | null
+          created_by?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          is_single_use?: boolean
+          organisation_id?: string
+          staff_type_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invites_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invites_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invites_staff_type_id_fkey"
+            columns: ["staff_type_id"]
+            isOneToOne: false
+            referencedRelation: "staff_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_type_fields: {
+        Row: {
+          created_at: string | null
+          display_order: number
+          field_type: Database["public"]["Enums"]["staff_field_type"]
+          id: string
+          is_required: boolean
+          name: string
+          options: Json | null
+          organisation_id: string
+          placeholder: string | null
+          staff_type_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number
+          field_type?: Database["public"]["Enums"]["staff_field_type"]
+          id?: string
+          is_required?: boolean
+          name: string
+          options?: Json | null
+          organisation_id: string
+          placeholder?: string | null
+          staff_type_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number
+          field_type?: Database["public"]["Enums"]["staff_field_type"]
+          id?: string
+          is_required?: boolean
+          name?: string
+          options?: Json | null
+          organisation_id?: string
+          placeholder?: string | null
+          staff_type_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_type_fields_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_type_fields_staff_type_id_fkey"
+            columns: ["staff_type_id"]
+            isOneToOne: false
+            referencedRelation: "staff_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_types: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_publicly_visible: boolean
+          name: string
+          organisation_id: string
+          requires_wwc: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_publicly_visible?: boolean
+          name: string
+          organisation_id: string
+          requires_wwc?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_publicly_visible?: boolean
+          name?: string
+          organisation_id?: string
+          requires_wwc?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_types_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          id: string
+          is_captain: boolean
+          jersey_number: number | null
+          joined_at: string | null
+          member_id: string
+          position: string | null
+          team_id: string
+        }
+        Insert: {
+          id?: string
+          is_captain?: boolean
+          jersey_number?: number | null
+          joined_at?: string | null
+          member_id: string
+          position?: string | null
+          team_id: string
+        }
+        Update: {
+          id?: string
+          is_captain?: boolean
+          jersey_number?: number | null
+          joined_at?: string | null
+          member_id?: string
+          position?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          age_group: string | null
+          coach_id: string | null
+          created_at: string | null
+          division: string | null
+          id: string
+          manager_id: string | null
+          max_players: number
+          name: string
+          organisation_id: string
+          season_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          age_group?: string | null
+          coach_id?: string | null
+          created_at?: string | null
+          division?: string | null
+          id?: string
+          manager_id?: string | null
+          max_players?: number
+          name: string
+          organisation_id: string
+          season_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          age_group?: string | null
+          coach_id?: string | null
+          created_at?: string | null
+          division?: string | null
+          id?: string
+          manager_id?: string | null
+          max_players?: number
+          name?: string
+          organisation_id?: string
+          season_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trial_event_divisions: {
+        Row: {
+          created_at: string | null
+          division_id: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          division_id: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          division_id?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_event_divisions_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "competition_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trial_event_divisions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "activity_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      assign_user_to_organisation: {
+        Args: {
+          p_org_id: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      auth_org_id: { Args: never; Returns: string }
+      auth_profile: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          last_name: string
+          organisation_id: string | null
+          phone: string | null
+          preferred_name: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      auth_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_member_directory: {
+        Args: { p_org_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
+      guardian_minor_ids: { Args: never; Returns: string[] }
+      is_admin_or_manager: { Args: { org_id: string }; Returns: boolean }
+      is_coach: { Args: { org_id: string }; Returns: boolean }
+      is_guardian_of: { Args: { target_member_id: string }; Returns: boolean }
+    }
     Enums: {
-      sport_type: SportType;
-      user_role: UserRole;
-      membership_type: MembershipType;
-      membership_status: MembershipStatus;
-      fixture_status: FixtureStatus;
-      payment_type: PaymentType;
-      payment_status: PaymentStatus;
-      document_category: DocumentCategory;
-      guardian_relationship: GuardianRelationship;
-      activity_type: ActivityType;
-      participation_mode: ParticipationMode;
-      event_status: EventStatus;
-      attendance_status: AttendanceStatus;
-      tournament_stage: TournamentStage;
-    };
-  };
+      accreditation_status: "current" | "expired" | "pending" | "revoked"
+      activity_type:
+        | "competition"
+        | "tournament"
+        | "training_session"
+        | "training_camp"
+        | "trials"
+      attendance_status:
+        | "attending"
+        | "not_attending"
+        | "maybe"
+        | "attended"
+        | "absent"
+        | "late"
+      document_category:
+        | "policy"
+        | "minutes"
+        | "report"
+        | "form"
+        | "constitution"
+        | "other"
+      event_status:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "postponed"
+        | "bye"
+      fixture_status:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "postponed"
+        | "bye"
+      guardian_relationship:
+        | "parent"
+        | "grandparent"
+        | "legal_guardian"
+        | "other"
+      membership_status: "active" | "inactive" | "suspended" | "pending"
+      membership_type: "senior" | "junior" | "social" | "life" | "volunteer"
+      participation_mode: "participant" | "organiser"
+      payment_status: "pending" | "paid" | "overdue" | "cancelled" | "refunded"
+      payment_type:
+        | "membership_fee"
+        | "match_fee"
+        | "fine"
+        | "merchandise"
+        | "event"
+        | "other"
+        | "trial_fee"
+      sport_type:
+        | "rugby_league"
+        | "rugby_union"
+        | "cricket"
+        | "soccer"
+        | "netball"
+        | "basketball"
+        | "hockey"
+        | "afl"
+        | "touch_football"
+        | "volleyball"
+        | "other"
+      staff_field_type:
+        | "text"
+        | "textarea"
+        | "url"
+        | "date"
+        | "select"
+        | "boolean"
+        | "file"
+        | "email"
+        | "phone"
+      staff_status: "active" | "inactive" | "on_leave" | "pending"
+      tournament_stage:
+        | "pool"
+        | "quarterfinal"
+        | "semifinal"
+        | "final"
+        | "third_place"
+        | "round_robin"
+      user_role:
+        | "admin"
+        | "manager"
+        | "coach"
+        | "player"
+        | "member"
+        | "guardian"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      accreditation_status: ["current", "expired", "pending", "revoked"],
+      activity_type: [
+        "competition",
+        "tournament",
+        "training_session",
+        "training_camp",
+        "trials",
+      ],
+      attendance_status: [
+        "attending",
+        "not_attending",
+        "maybe",
+        "attended",
+        "absent",
+        "late",
+      ],
+      document_category: [
+        "policy",
+        "minutes",
+        "report",
+        "form",
+        "constitution",
+        "other",
+      ],
+      event_status: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "postponed",
+        "bye",
+      ],
+      fixture_status: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "postponed",
+        "bye",
+      ],
+      guardian_relationship: [
+        "parent",
+        "grandparent",
+        "legal_guardian",
+        "other",
+      ],
+      membership_status: ["active", "inactive", "suspended", "pending"],
+      membership_type: ["senior", "junior", "social", "life", "volunteer"],
+      participation_mode: ["participant", "organiser"],
+      payment_status: ["pending", "paid", "overdue", "cancelled", "refunded"],
+      payment_type: [
+        "membership_fee",
+        "match_fee",
+        "fine",
+        "merchandise",
+        "event",
+        "other",
+        "trial_fee",
+      ],
+      sport_type: [
+        "rugby_league",
+        "rugby_union",
+        "cricket",
+        "soccer",
+        "netball",
+        "basketball",
+        "hockey",
+        "afl",
+        "touch_football",
+        "volleyball",
+        "other",
+      ],
+      staff_field_type: [
+        "text",
+        "textarea",
+        "url",
+        "date",
+        "select",
+        "boolean",
+        "file",
+        "email",
+        "phone",
+      ],
+      staff_status: ["active", "inactive", "on_leave", "pending"],
+      tournament_stage: [
+        "pool",
+        "quarterfinal",
+        "semifinal",
+        "final",
+        "third_place",
+        "round_robin",
+      ],
+      user_role: ["admin", "manager", "coach", "player", "member", "guardian"],
+    },
+  },
+} as const

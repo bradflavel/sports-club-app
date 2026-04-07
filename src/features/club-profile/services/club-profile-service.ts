@@ -81,6 +81,7 @@ export async function createVenue(
     name: string;
     address?: string | null;
     is_primary?: boolean;
+    categories?: string[];
     notes?: string | null;
   },
 ) {
@@ -102,6 +103,7 @@ export async function createVenue(
       name: venueData.name,
       address: venueData.address ?? null,
       is_primary: venueData.is_primary ?? false,
+      categories: venueData.categories ?? [],
       notes: venueData.notes ?? null,
     })
     .select()
@@ -112,7 +114,7 @@ export async function createVenue(
 
 export async function updateVenue(
   venueId: string,
-  venueData: Partial<Pick<ClubVenue, 'name' | 'address' | 'is_primary' | 'notes'>>,
+  venueData: Partial<Pick<ClubVenue, 'name' | 'address' | 'is_primary' | 'categories' | 'notes'>>,
 ) {
   const supabase = await createClient();
 
@@ -204,4 +206,37 @@ export async function deleteFeeEntry(id: string) {
     .eq('id', id);
 
   return { data: null, error };
+}
+
+// ---------------------------------------------------------------------------
+// Logo upload
+// ---------------------------------------------------------------------------
+
+const LOGOS_BUCKET = 'logos';
+
+/**
+ * Upload a logo file for the given organisation.
+ * Returns the public URL of the uploaded logo (with cache-busting query param).
+ */
+export async function uploadLogoClient(
+  orgId: string,
+  file: File
+): Promise<{ publicUrl: string | null; error: Error | null }> {
+  const supabase = createClient();
+
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `logos/${orgId}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(LOGOS_BUCKET)
+    .upload(path, file, { upsert: true });
+
+  if (uploadError) {
+    return { publicUrl: null, error: uploadError };
+  }
+
+  const { data: urlData } = supabase.storage.from(LOGOS_BUCKET).getPublicUrl(path);
+  const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+  return { publicUrl, error: null };
 }

@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getTrialFeePayments,
+  markTrialPaymentAsPaid,
+} from '@/features/trials/services/trial-service';
 import type { PaymentWithMember, PaymentStatus } from '@/lib/supabase/database.types';
 
 interface TrialPaymentTableProps {
@@ -26,18 +29,8 @@ export function TrialPaymentTable({ activityId, orgId }: TrialPaymentTableProps)
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
-    const supabase = createClient();
-
-    // Get trial fee payments for this org
-    // We filter by description pattern since payments don't directly link to activities
-    const { data } = await supabase
-      .from('payments')
-      .select('*, member:members(*, profile:profiles(*))')
-      .eq('organisation_id', orgId)
-      .eq('payment_type', 'trial_fee')
-      .order('created_at', { ascending: false });
-
-    setPayments((data as unknown as PaymentWithMember[]) ?? []);
+    const { data } = await getTrialFeePayments(orgId);
+    setPayments(data ?? []);
     setLoading(false);
   }, [orgId]);
 
@@ -46,15 +39,7 @@ export function TrialPaymentTable({ activityId, orgId }: TrialPaymentTableProps)
   }, [fetchPayments]);
 
   async function markAsPaid(paymentId: string) {
-    const supabase = createClient();
-    await supabase
-      .from('payments')
-      .update({
-        payment_status: 'paid',
-        paid_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', paymentId);
+    await markTrialPaymentAsPaid(paymentId);
     fetchPayments();
   }
 

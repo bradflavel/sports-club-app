@@ -229,6 +229,76 @@ export const DEFAULT_MEMBERSHIP_TYPES = [
   { name: 'Volunteer', fee_cents: 0, has_expiry: true, default_duration_months: 12 },
 ] as const;
 
+// Club Events
+export const CLUB_EVENT_TYPE_OPTIONS = [
+  { value: 'social', label: 'Social Event' },
+  { value: 'fundraiser', label: 'Fundraiser' },
+  { value: 'agm', label: 'AGM' },
+  { value: 'presentation', label: 'Presentation Night' },
+  { value: 'meeting', label: 'Meeting' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export const CLUB_EVENT_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'completed', label: 'Completed' },
+] as const;
+
+export const CLUB_EVENT_REGISTRATION_STATUS_OPTIONS = [
+  { value: 'registered', label: 'Registered' },
+  { value: 'waitlisted', label: 'Waitlisted' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'attended', label: 'Attended' },
+] as const;
+
+// Staff system
+export const DEFAULT_STAFF_TYPES = [
+  { name: 'Coach', requires_wwc: true, is_publicly_visible: false },
+  { name: 'Manager', requires_wwc: true, is_publicly_visible: false },
+  { name: 'Volunteer', requires_wwc: true, is_publicly_visible: false },
+  { name: 'Committee Member', requires_wwc: false, is_publicly_visible: true },
+] as const;
+
+export const STAFF_STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'on_leave', label: 'On Leave' },
+  { value: 'pending', label: 'Pending' },
+] as const;
+
+export const STAFF_FIELD_TYPE_OPTIONS = [
+  { value: 'text', label: 'Text' },
+  { value: 'textarea', label: 'Long Text' },
+  { value: 'url', label: 'URL' },
+  { value: 'date', label: 'Date' },
+  { value: 'select', label: 'Dropdown' },
+  { value: 'boolean', label: 'Yes/No' },
+  { value: 'file', label: 'File Upload' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+] as const;
+
+export const ACCREDITATION_STATUS_OPTIONS = [
+  { value: 'current', label: 'Current' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'revoked', label: 'Revoked' },
+] as const;
+
+export const WWC_CHECK_BY_STATE: Record<string, { name: string; abbreviation: string }> = {
+  NSW: { name: 'Working With Children Check', abbreviation: 'WWCC' },
+  VIC: { name: 'Working With Children Check', abbreviation: 'WWCC' },
+  QLD: { name: 'Blue Card (Working with Children)', abbreviation: 'Blue Card' },
+  WA:  { name: 'Working With Children Check', abbreviation: 'WWCC' },
+  SA:  { name: 'Working With Children Check', abbreviation: 'WWCC' },
+  TAS: { name: 'Working With Vulnerable People Registration', abbreviation: 'WWVP' },
+  NT:  { name: 'Working With Children Clearance (Ochre Card)', abbreviation: 'Ochre Card' },
+  ACT: { name: 'Working With Vulnerable People Registration', abbreviation: 'WWVP' },
+};
+
 // Activity module system
 export const ACTIVITY_TYPE_CONFIG = {
   competition: {
