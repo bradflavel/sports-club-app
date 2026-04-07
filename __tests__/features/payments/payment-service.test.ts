@@ -75,10 +75,10 @@ const mockPayment = {
   amount_cents: 5000,
   description: 'Annual membership fee',
   payment_type: 'membership_fee',
-  status: 'pending',
+  payment_status: 'pending',
   due_date: '2024-03-01',
-  paid_date: null,
-  stripe_payment_id: null,
+  paid_at: null,
+  stripe_payment_intent_id: null,
   created_by: 'admin-1',
   created_at: '2024-01-15T00:00:00Z',
   updated_at: '2024-01-15T00:00:00Z',
@@ -161,7 +161,7 @@ describe('createPayment', () => {
       created_by: 'admin-1',
     });
 
-    expect(capturedInsertArg).toMatchObject({ status: 'pending' });
+    expect(capturedInsertArg).toMatchObject({ payment_status: 'pending' });
   });
 
   it('returns error when insert fails', async () => {
@@ -259,8 +259,8 @@ describe('createBulkPayments', () => {
       created_by: 'admin-1',
     });
 
-    (capturedInsertArg as { status: string }[]).forEach((row) => {
-      expect(row.status).toBe('pending');
+    (capturedInsertArg as { payment_status: string }[]).forEach((row) => {
+      expect(row.payment_status).toBe('pending');
     });
   });
 });
@@ -269,7 +269,7 @@ describe('createBulkPayments', () => {
 // markAsPaid
 // ---------------------------------------------------------------------------
 describe('markAsPaid', () => {
-  it('sets status to paid and adds paid_date', async () => {
+  it('sets status to paid and adds paid_at', async () => {
     let capturedUpdateArg: unknown;
     const builder = {
       update: vi.fn().mockImplementation((arg) => {
@@ -279,7 +279,7 @@ describe('markAsPaid', () => {
       eq: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
-        data: { ...mockPayment, status: 'paid', paid_date: '2024-04-04' },
+        data: { ...mockPayment, payment_status: 'paid', paid_at: '2024-04-04' },
         error: null,
       }),
     };
@@ -287,8 +287,8 @@ describe('markAsPaid', () => {
 
     const result = await markAsPaid('payment-1');
 
-    expect(capturedUpdateArg).toMatchObject({ status: 'paid' });
-    expect((capturedUpdateArg as { paid_date: string }).paid_date).toBeTruthy();
+    expect(capturedUpdateArg).toMatchObject({ payment_status: 'paid' });
+    expect((capturedUpdateArg as { paid_at: string }).paid_at).toBeTruthy();
     expect(result.error).toBeNull();
   });
 
@@ -333,9 +333,9 @@ describe('markAsPaid', () => {
 describe('getPaymentSummary', () => {
   it('calculates totalOutstanding correctly from pending and overdue payments', async () => {
     const payments = [
-      { amount_cents: 5000, status: 'pending', due_date: '2024-01-01', paid_date: null, member_id: 'member-1' },
-      { amount_cents: 3000, status: 'overdue', due_date: '2023-12-01', paid_date: null, member_id: 'member-2' },
-      { amount_cents: 2000, status: 'paid', due_date: '2024-01-01', paid_date: '2024-01-10', member_id: 'member-3' },
+      { amount_cents: 5000, payment_status: 'pending', due_date: '2024-01-01', paid_at: null, member_id: 'member-1' },
+      { amount_cents: 3000, payment_status: 'overdue', due_date: '2023-12-01', paid_at: null, member_id: 'member-2' },
+      { amount_cents: 2000, payment_status: 'paid', due_date: '2024-01-01', paid_at: '2024-01-10', member_id: 'member-3' },
     ];
 
     const builder = {
@@ -353,9 +353,9 @@ describe('getPaymentSummary', () => {
 
   it('calculates overdueCount correctly', async () => {
     const payments = [
-      { amount_cents: 3000, status: 'overdue', due_date: '2023-11-01', paid_date: null, member_id: 'member-1' },
-      { amount_cents: 4000, status: 'overdue', due_date: '2023-10-01', paid_date: null, member_id: 'member-2' },
-      { amount_cents: 2000, status: 'pending', due_date: '2024-03-01', paid_date: null, member_id: 'member-3' },
+      { amount_cents: 3000, payment_status: 'overdue', due_date: '2023-11-01', paid_at: null, member_id: 'member-1' },
+      { amount_cents: 4000, payment_status: 'overdue', due_date: '2023-10-01', paid_at: null, member_id: 'member-2' },
+      { amount_cents: 2000, payment_status: 'pending', due_date: '2024-03-01', paid_at: null, member_id: 'member-3' },
     ];
 
     const builder = {
@@ -371,9 +371,9 @@ describe('getPaymentSummary', () => {
 
   it('counts unique members with outstanding balance', async () => {
     const payments = [
-      { amount_cents: 5000, status: 'pending', due_date: '2024-01-01', paid_date: null, member_id: 'member-1' },
-      { amount_cents: 3000, status: 'overdue', due_date: '2024-01-01', paid_date: null, member_id: 'member-1' },
-      { amount_cents: 2000, status: 'pending', due_date: '2024-01-01', paid_date: null, member_id: 'member-2' },
+      { amount_cents: 5000, payment_status: 'pending', due_date: '2024-01-01', paid_at: null, member_id: 'member-1' },
+      { amount_cents: 3000, payment_status: 'overdue', due_date: '2024-01-01', paid_at: null, member_id: 'member-1' },
+      { amount_cents: 2000, payment_status: 'pending', due_date: '2024-01-01', paid_at: null, member_id: 'member-2' },
     ];
 
     const builder = {
