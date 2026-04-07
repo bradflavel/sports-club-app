@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Plus, Pencil, Trash2, FileText, AlertTriangle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { getAccreditationsForStaff, deleteAccreditation } from '../services/staff-accreditation-service';
 import { StaffAccreditationForm } from './staff-accreditation-form';
 import type { StaffAccreditation } from '@/lib/supabase/database.types';

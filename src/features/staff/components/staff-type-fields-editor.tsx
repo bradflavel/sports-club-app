@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { STAFF_FIELD_TYPE_OPTIONS } from '@/lib/constants';
 import { staffTypeFieldSchema, type StaffTypeFieldInput } from '../schemas/staff-schemas';
 import {

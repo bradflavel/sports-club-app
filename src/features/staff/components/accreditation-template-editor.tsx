@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { accreditationTemplateSchema, type AccreditationTemplateInput } from '../schemas/staff-schemas';
 import {
   getTemplatesForStaffType,

@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/page-header';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function SettingsPage() {
-  const { profile } = useUser();
+  const { profile } = useAuth();
   const { toast } = useToast();
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';

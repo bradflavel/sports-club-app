@@ -17,7 +17,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { staffInviteSchema, type StaffInviteInput } from '../schemas/staff-schemas';
 import { createInvite } from '../services/staff-invite-service';
 import type { StaffType } from '@/lib/supabase/database.types';

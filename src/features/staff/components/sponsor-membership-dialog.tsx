@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
 import { getMembershipTypes } from '@/features/members/services/membership-type-service';
 import { sponsorMembershipSchema, type SponsorMembershipInput } from '../schemas/staff-schemas';

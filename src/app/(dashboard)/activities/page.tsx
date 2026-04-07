@@ -19,7 +19,7 @@ import { getActivities, createActivity } from '@/features/activities/services/ac
 import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { generateSlug, getActivityPath } from '@/lib/utils';
 import type { Activity, ActivityType } from '@/lib/supabase/database.types';
@@ -34,7 +34,7 @@ export default function ActivitiesPage({ typeOverride }: ActivitiesPageProps = {
   const typeParam = typeOverride ?? (searchParams.get('type') as ActivityType | null);
   const parentParam = searchParams.get('parent');
   const { organisation, loading: orgLoading } = useOrganisation();
-  const { profile } = useUser();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 

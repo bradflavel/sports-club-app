@@ -2,48 +2,56 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
-import { Button } from '@/components/ui/button';
 import { EventForm } from '@/features/club-events/components/event-form';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import {
   createClubEvent,
   getVenuesForEvents,
+  getActivitiesForEventPicker,
+  setEventTargets,
 } from '@/features/club-events/services/club-event-service';
-import { dollarsToCents } from '@/lib/format';
 import type { ClubEventInput } from '@/features/club-events/schemas/club-event-schemas';
-import type { ClubVenue } from '@/features/club-events/types/club-event-types';
+import type {
+  ClubVenue,
+  PickerActivity,
+} from '@/features/club-events/types/club-event-types';
 
 export default function NewEventPage() {
   const router = useRouter();
-  const { profile, user } = useUser();
+  const { profile, user } = useAuth();
   const { organisation } = useOrganisation();
   const { toast } = useToast();
 
   const [venues, setVenues] = useState<ClubVenue[]>([]);
-  const [venuesLoading, setVenuesLoading] = useState(true);
+  const [activities, setActivities] = useState<PickerActivity[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
-  const fetchVenues = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!organisation?.id) return;
-    setVenuesLoading(true);
-    const { data } = await getVenuesForEvents(organisation.id);
-    setVenues((data as ClubVenue[]) ?? []);
-    setVenuesLoading(false);
+    setDataLoading(true);
+
+    const [venueRes, activityRes] = await Promise.all([
+      getVenuesForEvents(organisation.id),
+      getActivitiesForEventPicker(organisation.id),
+    ]);
+
+    setVenues((venueRes.data as ClubVenue[]) ?? []);
+    setActivities(activityRes.data ?? []);
+    setDataLoading(false);
   }, [organisation?.id]);
 
   useEffect(() => {
     if (organisation?.id) {
-      fetchVenues();
+      fetchData();
     }
-  }, [organisation?.id, fetchVenues]);
+  }, [organisation?.id, fetchData]);
 
   async function handleSubmit(data: ClubEventInput) {
     if (!organisation?.id || !user?.id) {
@@ -71,8 +79,8 @@ export default function NewEventPage() {
         venue_address: data.venueAddress ?? null,
         max_attendees: data.maxAttendees ?? null,
         enable_waitlist: data.enableWaitlist ?? false,
-        cost_cents: data.costCents ? Math.round(Number(data.costCents) * 100) : 0,
-        cost_description: data.costDescription ?? null,
+        cost_cents: data.costCents ?? 0,
+        cost_description: null,
         registration_required: data.registrationRequired ?? false,
         registration_opens: data.registrationOpens || null,
         registration_closes: data.registrationCloses || null,
@@ -93,6 +101,19 @@ export default function NewEventPage() {
       });
 
       if (error) throw new Error(error.message);
+
+      // Save audience targets
+      const hasTargets =
+        (data.targetActivityIds?.length ?? 0) > 0 ||
+        (data.targetDivisionIds?.length ?? 0) > 0 ||
+        (data.targetTeamIds?.length ?? 0) > 0;
+      if (created?.id && hasTargets) {
+        await setEventTargets(created.id, {
+          activityIds: data.targetActivityIds ?? [],
+          divisionIds: data.targetDivisionIds ?? [],
+          teamIds: data.targetTeamIds ?? [],
+        });
+      }
 
       toast({ title: 'Event created successfully' });
       router.push(`/events/${created?.id}`);
@@ -115,26 +136,22 @@ export default function NewEventPage() {
     );
   }
 
-  if (venuesLoading) {
+  if (dataLoading) {
     return <PageSkeleton />;
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Create Event"
-        actions={
-          <Button variant="outline" size="sm" asChild className="gap-2">
-            <Link href="/events">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Events
-            </Link>
-          </Button>
-        }
-      />
+      <PageHeader title="Create Event" />
 
       <div className="mx-auto max-w-3xl">
-        <EventForm onSubmit={handleSubmit} loading={submitting} venues={venues} />
+        <EventForm
+          onSubmit={handleSubmit}
+          loading={submitting}
+          venues={venues}
+          activities={activities}
+          onCancel={() => router.push('/events')}
+        />
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EventDetail } from '@/features/club-events/components/event-detail';
 import { EventAdminDetail } from '@/features/club-events/components/event-admin-detail';
 import { RegistrationDialog } from '@/features/club-events/components/registration-dialog';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -36,7 +36,7 @@ import type { RegistrationInput } from '@/features/club-events/schemas/club-even
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { profile, user } = useUser();
+  const { profile, user } = useAuth();
   const { organisation } = useOrganisation();
   const { toast } = useToast();
 

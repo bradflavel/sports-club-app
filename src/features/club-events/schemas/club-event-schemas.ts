@@ -13,7 +13,6 @@ export const clubEventSchema = z.object({
   maxAttendees: z.coerce.number().int().positive().optional(),
   enableWaitlist: z.boolean().optional(),
   costCents: z.coerce.number().int().min(0).optional(),
-  costDescription: z.string().optional(),
   registrationRequired: z.boolean().optional(),
   registrationOpens: z.string().optional(),
   registrationCloses: z.string().optional(),
@@ -30,6 +29,11 @@ export const clubEventSchema = z.object({
   isMembersOnly: z.boolean().optional(),
   coverImageUrl: z.string().optional(),
   notes: z.string().optional(),
+  // Audience targeting
+  audienceType: z.enum(['all', 'specific']).optional(),
+  targetActivityIds: z.array(z.string()).optional(),
+  targetDivisionIds: z.array(z.string()).optional(),
+  targetTeamIds: z.array(z.string()).optional(),
 });
 
 export type ClubEventInput = z.infer<typeof clubEventSchema>;

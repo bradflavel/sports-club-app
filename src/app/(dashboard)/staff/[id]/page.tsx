@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { getInitials } from '@/lib/utils';
 import { getStaffById } from '@/features/staff/services/staff-service';
 import { getFieldValues, getFieldsForStaffType } from '@/features/staff/services/staff-field-service';

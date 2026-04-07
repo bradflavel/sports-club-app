@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { ACCREDITATION_STATUS_OPTIONS } from '@/lib/constants';
 import { staffAccreditationSchema, type StaffAccreditationInput } from '../schemas/staff-schemas';
 import { createAccreditation, updateAccreditation } from '../services/staff-accreditation-service';

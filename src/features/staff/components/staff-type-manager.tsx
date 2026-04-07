@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { staffTypeSchema, type StaffTypeInput } from '../schemas/staff-schemas';
 import {

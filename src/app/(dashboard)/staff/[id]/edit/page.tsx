@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth-context';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { StaffForm } from '@/features/staff/components/staff-form';
 import { getStaffById, updateStaff } from '@/features/staff/services/staff-service';
 import { getStaffTypes } from '@/features/staff/services/staff-type-service';

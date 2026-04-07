@@ -6,7 +6,7 @@ import { Plus, Link2, Upload, Settings2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth-context';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { StaffStats } from '@/features/staff/components/staff-stats';
 import { StaffFilters } from '@/features/staff/components/staff-filters';

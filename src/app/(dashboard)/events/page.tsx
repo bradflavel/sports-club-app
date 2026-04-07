@@ -8,7 +8,7 @@ import { PageSkeleton } from '@/components/shared/loading-skeleton';
 import { SearchInput } from '@/components/shared/search-input';
 import { Button } from '@/components/ui/button';
 import { EventList } from '@/features/club-events/components/event-list';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -24,7 +24,7 @@ import type {
 import { CLUB_EVENT_TYPE_OPTIONS } from '@/lib/constants';
 
 export default function EventsPage() {
-  const { profile, loading: userLoading } = useUser();
+  const { profile, loading: userLoading } = useAuth();
   const { organisation, loading: orgLoading } = useOrganisation();
   const { toast } = useToast();
 
