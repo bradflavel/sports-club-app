@@ -52,7 +52,7 @@ const columns: ColumnDef<Payment>[] = [
     accessorKey: 'due_date',
     header: 'Due Date',
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">{formatDate(row.original.due_date)}</span>
+      <span className="text-sm text-muted-foreground">{row.original.due_date ? formatDate(row.original.due_date) : '—'}</span>
     ),
   },
   {

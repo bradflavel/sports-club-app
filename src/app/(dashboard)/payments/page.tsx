@@ -246,12 +246,12 @@ export default function PaymentsPage() {
 
   // Member-view summary stats
   const totalOwed = payments
-    .filter((p) => p.status === 'pending' || p.status === 'overdue')
+    .filter((p) => p.payment_status === 'pending' || p.payment_status === 'overdue')
     .reduce((sum, p) => sum + p.amount_cents, 0);
 
   const nextDue = payments
-    .filter((p) => p.status === 'pending' || p.status === 'overdue')
-    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+    .filter((p) => p.payment_status === 'pending' || p.payment_status === 'overdue')
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))[0];
 
   if (orgLoading || userLoading) {
     return <PageSkeleton />;
@@ -294,8 +294,8 @@ export default function PaymentsPage() {
             />
             <StatCard
               title="Next Payment Due"
-              value={nextDue ? formatDate(nextDue.due_date) : 'None'}
-              subtitle={nextDue ? nextDue.description : 'No upcoming payments'}
+              value={nextDue?.due_date ? formatDate(nextDue.due_date) : 'None'}
+              subtitle={nextDue ? nextDue.description ?? undefined : 'No upcoming payments'}
               icon={Calendar}
             />
           </div>

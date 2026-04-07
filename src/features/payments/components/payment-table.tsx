@@ -146,7 +146,7 @@ function createColumns(
       ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {formatDate(row.original.due_date)}
+          {row.original.due_date ? formatDate(row.original.due_date) : '—'}
         </span>
       ),
       enableSorting: true,

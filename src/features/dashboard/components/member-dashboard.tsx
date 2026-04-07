@@ -204,7 +204,7 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
                     <p className="text-sm font-medium">{payment.description}</p>
                     <p className="text-xs text-muted-foreground">
                       Due{' '}
-                      {new Date(payment.due_date).toLocaleDateString('en-AU', {
+                      {new Date(payment.due_date ?? '').toLocaleDateString('en-AU', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -220,10 +220,10 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
                     </p>
                     <span
                       className={`text-xs font-medium ${
-                        payment.status === 'overdue' ? 'text-destructive' : 'text-amber-600'
+                        payment.payment_status === 'overdue' ? 'text-destructive' : 'text-amber-600'
                       }`}
                     >
-                      {payment.status === 'overdue' ? 'Overdue' : 'Pending'}
+                      {payment.payment_status === 'overdue' ? 'Overdue' : 'Pending'}
                     </span>
                   </div>
                 </div>

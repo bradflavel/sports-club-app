@@ -75,7 +75,7 @@ export function OutstandingPaymentsWidget({
             </thead>
             <tbody className="divide-y">
               {payments.slice(0, 5).map((payment) => {
-                const overdue = daysOverdue(payment.due_date);
+                const overdue = daysOverdue(payment.due_date ?? '');
                 const memberName = `${payment.member.profile.first_name} ${payment.member.profile.last_name}`;
                 return (
                   <tr key={payment.id} className="hover:bg-muted/20">
@@ -84,7 +84,7 @@ export function OutstandingPaymentsWidget({
                       {formatCurrency(payment.amount_cents)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {formatDate(payment.due_date)}
+                      {payment.due_date ? formatDate(payment.due_date) : '—'}
                     </td>
                     <td className="px-4 py-3">
                       {overdue > 0 ? (

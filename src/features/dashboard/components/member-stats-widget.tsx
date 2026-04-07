@@ -30,7 +30,7 @@ export function MemberStatsWidget({ payments, loading = false }: MemberStatsWidg
 
   const nextPayment = payments
     .filter((p) => p.payment_status !== 'paid' && p.payment_status !== 'cancelled')
-    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+    .sort((a, b) => new Date(a.due_date ?? '').getTime() - new Date(b.due_date ?? '').getTime())[0];
 
   if (loading) {
     return (
@@ -74,7 +74,7 @@ export function MemberStatsWidget({ payments, loading = false }: MemberStatsWidg
         </div>
         {nextPayment ? (
           <>
-            <p className="mt-2 text-2xl font-bold">{formatDate(nextPayment.due_date)}</p>
+            <p className="mt-2 text-2xl font-bold">{nextPayment.due_date ? formatDate(nextPayment.due_date) : '—'}</p>
             <p className="mt-1 text-xs text-muted-foreground truncate">
               {nextPayment.description} &mdash; {formatCurrency(nextPayment.amount_cents)}
             </p>

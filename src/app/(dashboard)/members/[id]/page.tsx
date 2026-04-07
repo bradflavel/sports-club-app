@@ -532,7 +532,7 @@ export default function MemberProfilePage() {
                           <StatusBadge status={payment.payment_status} />
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {formatDate(payment.due_date)}
+                          {payment.due_date ? formatDate(payment.due_date) : '—'}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {payment.paid_at ? formatDate(payment.paid_at) : '—'}
