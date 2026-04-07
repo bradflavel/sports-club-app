@@ -57,7 +57,7 @@ export async function getAdminDashboardDataClient(
       .from('payments')
       .select('*, member:members(*, profile:profiles(*))')
       .eq('organisation_id', orgId)
-      .in('status', ['pending', 'overdue'])
+      .in('payment_status', ['pending', 'overdue'])
       .order('due_date', { ascending: true })
       .limit(5),
 
@@ -190,7 +190,7 @@ export async function getMemberDashboardDataClient(
       .from('payments')
       .select('*')
       .eq('member_id', memberId)
-      .in('status', ['pending', 'overdue'])
+      .in('payment_status', ['pending', 'overdue'])
       .order('due_date', { ascending: true }),
 
     supabase
@@ -224,7 +224,7 @@ export async function getMemberDashboardDataClient(
         .from('payments')
         .select('amount_cents')
         .eq('member_id', minor.id)
-        .in('status', ['pending', 'overdue']);
+        .in('payment_status', ['pending', 'overdue']);
 
       const outstanding = (depPayments ?? []).reduce(
         (sum: number, p: { amount_cents: number }) => sum + p.amount_cents,

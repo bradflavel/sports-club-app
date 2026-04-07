@@ -40,9 +40,9 @@ export function useOrganisation() {
         .eq('id', orgId!)
         .single();
 
-      cachedOrg = data;
+      cachedOrg = data as unknown as Organisation | null;
       cachedOrgId = orgId;
-      setOrganisation(data);
+      setOrganisation(data as unknown as Organisation | null);
       setLoading(false);
     }
 

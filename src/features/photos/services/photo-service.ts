@@ -174,7 +174,7 @@ export async function uploadPhoto(
   if (error) return { data: null, error };
 
   // Increment the album's photo_count
-  await supabase.rpc('increment_photo_count' as never, { album_id: albumId }).maybeSingle();
+  await supabase.rpc('increment_photo_count' as never, { album_id: albumId } as never).maybeSingle();
 
   return { data: data as PhotoItem | null, error: null };
 }

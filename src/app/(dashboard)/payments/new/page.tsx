@@ -72,10 +72,10 @@ export default function NewPaymentPage() {
         amount_cents: dollarsToCents(data.amount),
         description: data.description,
         payment_type: data.paymentType as PaymentType,
-        status: 'pending',
+        payment_status: 'pending',
         due_date: data.dueDate,
-        paid_date: null,
-        stripe_payment_id: null,
+        paid_at: null,
+        stripe_payment_intent_id: null,
         created_by: user.id,
       });
 
@@ -112,10 +112,10 @@ export default function NewPaymentPage() {
         amount_cents: amountCents,
         description: data.description,
         payment_type: data.paymentType as PaymentType,
-        status: 'pending' as const,
+        payment_status: 'pending' as const,
         due_date: data.dueDate,
-        paid_date: null,
-        stripe_payment_id: null,
+        paid_at: null,
+        stripe_payment_intent_id: null,
         created_by: user.id,
       }));
 

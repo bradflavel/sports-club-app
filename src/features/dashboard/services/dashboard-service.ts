@@ -43,16 +43,16 @@ export async function getAdminDashboardData(
 
     supabase
       .from('payments')
-      .select('amount_cents, status')
+      .select('amount_cents, payment_status')
       .eq('organisation_id', orgId)
-      .in('status', ['pending', 'overdue']),
+      .in('payment_status', ['pending', 'overdue']),
   ]);
 
   const firstError = memberError ?? teamError ?? fixtureError ?? paymentError;
   if (firstError) return { data: null, error: firstError };
 
   const outstandingPaymentsTotal = payments
-    ? (payments as Pick<Payment, 'amount_cents' | 'status'>[]).reduce(
+    ? (payments as Pick<Payment, 'amount_cents' | 'payment_status'>[]).reduce(
         (sum, p) => sum + p.amount_cents,
         0
       ) / 100
@@ -132,7 +132,7 @@ export async function getMemberDashboardData(
       .from('payments')
       .select('*')
       .eq('member_id', memberId)
-      .in('status', ['pending', 'overdue'])
+      .in('payment_status', ['pending', 'overdue'])
       .order('due_date', { ascending: true }),
   ]);
 

@@ -40,7 +40,7 @@ export const staffAccreditationSchema = z.object({
   credential_number: z.string().max(100).optional().nullable(),
   issue_date: z.string().optional().nullable(),
   expiry_date: z.string().optional().nullable(),
-  status: z.enum(['current', 'expired', 'pending', 'revoked']).default('current'),
+  status: z.enum(['current', 'expired', 'pending', 'revoked']).default('pending'),
   document_url: z.string().url().optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
 });

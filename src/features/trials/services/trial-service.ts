@@ -321,8 +321,8 @@ export async function markTrialPaymentAsPaid(paymentId: string) {
   const { error } = await supabase
     .from('payments')
     .update({
-      status: 'paid',
-      paid_date: new Date().toISOString().split('T')[0],
+      payment_status: 'paid',
+      paid_at: new Date().toISOString().split('T')[0],
       updated_at: new Date().toISOString(),
     })
     .eq('id', paymentId);
@@ -348,11 +348,11 @@ export async function generateTrialInvoices(
       ? `Trial fees (${trialEventCount} sessions)`
       : 'Trial fee (one-time)',
     payment_type: 'trial_fee' as const,
-    status: 'pending' as const,
+    payment_status: 'pending' as const,
     due_date: new Date().toISOString().split('T')[0],
     created_by: createdBy,
-    paid_date: null,
-    stripe_payment_id: null,
+    paid_at: null,
+    stripe_payment_intent_id: null,
   }));
 
   const { error } = await supabase.from('payments').insert(payments);

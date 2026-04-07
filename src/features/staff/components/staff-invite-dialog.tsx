@@ -44,7 +44,8 @@ export function StaffInviteDialog({
   const { toast } = useToast();
 
   const form = useForm<StaffInviteInput>({
-    resolver: zodResolver(staffInviteSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(staffInviteSchema) as any,
     defaultValues: {
       staff_type_id: staffTypes[0]?.id ?? '',
       email: '',

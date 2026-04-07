@@ -82,12 +82,12 @@ export function TrialPaymentTable({ activityId, orgId }: TrialPaymentTableProps)
                 ${(payment.amount_cents / 100).toFixed(2)}
               </td>
               <td className="px-3 py-2 text-center">
-                <Badge variant={STATUS_VARIANTS[payment.status]} className="text-xs capitalize">
-                  {payment.status}
+                <Badge variant={STATUS_VARIANTS[payment.payment_status]} className="text-xs capitalize">
+                  {payment.payment_status}
                 </Badge>
               </td>
               <td className="px-3 py-2 text-right">
-                {payment.status === 'pending' && (
+                {payment.payment_status === 'pending' && (
                   <Button
                     variant="ghost"
                     size="sm"

@@ -36,8 +36,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         .eq('album_id', id)
         .order('created_at', { ascending: false }),
     ]);
-    setAlbum(albumRes.data);
-    setPhotos(photosRes.data || []);
+    setAlbum(albumRes.data as unknown as PhotoAlbum | null);
+    setPhotos((photosRes.data || []) as unknown as PhotoItem[]);
     setLoading(false);
   }, [id]);
 

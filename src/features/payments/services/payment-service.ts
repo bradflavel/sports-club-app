@@ -29,7 +29,7 @@ export async function getPayments(
   }
 
   if (filters?.status && filters.status.length > 0) {
-    query = query.in('status', filters.status as PaymentStatus[]);
+    query = query.in('payment_status', filters.status as PaymentStatus[]);
   }
 
   if (filters?.memberId) {
@@ -75,10 +75,10 @@ export async function createPayment(paymentData: {
   amount: number;
   description: string;
   payment_type: PaymentType;
-  status?: PaymentStatus;
+  payment_status?: PaymentStatus;
   due_date: string;
   created_by: string;
-  stripe_payment_id?: string | null;
+  stripe_payment_intent_id?: string | null;
 }) {
   const supabase = await createClient();
 
@@ -89,9 +89,9 @@ export async function createPayment(paymentData: {
     .insert({
       ...rest,
       amount_cents: Math.round(amount * 100),
-      status: rest.status ?? 'pending',
-      paid_date: null,
-      stripe_payment_id: rest.stripe_payment_id ?? null,
+      payment_status: rest.payment_status ?? 'pending',
+      paid_at: null,
+      stripe_payment_intent_id: rest.stripe_payment_intent_id ?? null,
     })
     .select('*, member:members(*, profile:profiles(*))')
     .single();
@@ -120,9 +120,9 @@ export async function createBulkPayments(
     ...rest,
     member_id,
     amount_cents,
-    status: 'pending' as PaymentStatus,
-    paid_date: null,
-    stripe_payment_id: null,
+    payment_status: 'pending' as PaymentStatus,
+    paid_at: null,
+    stripe_payment_intent_id: null,
   }));
 
   const { data, error } = await supabase
@@ -140,10 +140,10 @@ export async function updatePayment(
       Payment,
       | 'description'
       | 'payment_type'
-      | 'status'
+      | 'payment_status'
       | 'due_date'
-      | 'paid_date'
-      | 'stripe_payment_id'
+      | 'paid_at'
+      | 'stripe_payment_intent_id'
     >
   > & { amount?: number }
 ) {
@@ -177,8 +177,8 @@ export async function markAsPaid(id: string) {
   const { data, error } = await supabase
     .from('payments')
     .update({
-      status: 'paid',
-      paid_date: today,
+      payment_status: 'paid',
+      paid_at: today,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -194,7 +194,7 @@ export async function markAsRefunded(id: string) {
   const { data, error } = await supabase
     .from('payments')
     .update({
-      status: 'refunded',
+      payment_status: 'refunded',
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -226,7 +226,7 @@ export async function getPaymentSummary(
 
   const { data: payments, error } = await supabase
     .from('payments')
-    .select('amount_cents, status, due_date, paid_date, member_id')
+    .select('amount_cents, payment_status, due_date, paid_at, member_id')
     .eq('organisation_id', orgId);
 
   if (error) return { data: null, error };
@@ -243,19 +243,19 @@ export async function getPaymentSummary(
   const membersWithBalanceSet = new Set<string>();
 
   for (const p of payments) {
-    if (p.status === 'pending' || p.status === 'overdue') {
+    if (p.payment_status === 'pending' || p.payment_status === 'overdue') {
       totalOutstanding += p.amount_cents;
       membersWithBalanceSet.add(p.member_id);
     }
 
-    if (p.status === 'overdue') {
+    if (p.payment_status === 'overdue') {
       overdueCount++;
     }
 
     if (
-      p.status === 'paid' &&
-      p.paid_date &&
-      p.paid_date >= startOfMonth
+      p.payment_status === 'paid' &&
+      p.paid_at &&
+      p.paid_at >= startOfMonth
     ) {
       collectedThisMonth += p.amount_cents;
     }

@@ -31,7 +31,7 @@ function loadUserData(): Promise<void> {
         .select('*')
         .eq('id', user.id)
         .single();
-      cachedProfile = profile;
+      cachedProfile = profile as unknown as Profile | null;
     }
     notifyListeners();
   })();

@@ -39,7 +39,8 @@ export function AccreditationTemplateEditor({ staffTypeId, organisationId }: Acc
   const { toast } = useToast();
 
   const form = useForm<AccreditationTemplateInput>({
-    resolver: zodResolver(accreditationTemplateSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(accreditationTemplateSchema) as any,
     defaultValues: { name: '', issuing_body: '', is_required: false },
   });
 
