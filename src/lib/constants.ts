@@ -229,6 +229,31 @@ export const DEFAULT_MEMBERSHIP_TYPES = [
   { name: 'Volunteer', fee_cents: 0, has_expiry: true, default_duration_months: 12 },
 ] as const;
 
+// Club Events
+export const CLUB_EVENT_TYPE_OPTIONS = [
+  { value: 'social', label: 'Social Event' },
+  { value: 'fundraiser', label: 'Fundraiser' },
+  { value: 'agm', label: 'AGM' },
+  { value: 'presentation', label: 'Presentation Night' },
+  { value: 'meeting', label: 'Meeting' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export const CLUB_EVENT_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'published', label: 'Published' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'completed', label: 'Completed' },
+] as const;
+
+export const CLUB_EVENT_REGISTRATION_STATUS_OPTIONS = [
+  { value: 'registered', label: 'Registered' },
+  { value: 'waitlisted', label: 'Waitlisted' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'attended', label: 'Attended' },
+] as const;
+
 // Activity module system
 export const ACTIVITY_TYPE_CONFIG = {
   competition: {

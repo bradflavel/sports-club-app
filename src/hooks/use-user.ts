@@ -9,7 +9,7 @@ import type { User } from '@supabase/supabase-js';
 let cachedUser: User | null = null;
 let cachedProfile: Profile | null = null;
 let loadPromise: Promise<void> | null = null;
-let listeners: Set<() => void> = new Set();
+const listeners: Set<() => void> = new Set();
 
 function notifyListeners() {
   listeners.forEach((fn) => fn());

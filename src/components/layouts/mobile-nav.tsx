@@ -18,6 +18,7 @@ import {
   Award,
   Dumbbell,
   Tent,
+  PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,7 @@ export function MobileNav() {
     { href: '/club', label: 'Club', icon: Building2 },
     ...restModules,
     ...(moduleNavItems.length === 0 ? legacyMoreItems : []),
+    { href: '/events', label: 'Events', icon: PartyPopper },
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/photos', label: 'Photos', icon: Camera },
     { href: '/announcements', label: 'Announcements', icon: Megaphone },

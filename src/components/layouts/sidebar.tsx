@@ -22,6 +22,7 @@ import {
   Dumbbell,
   Tent,
   ClipboardCheck,
+  PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
 import { useEnabledModules } from '@/hooks/use-enabled-modules';
@@ -69,6 +70,7 @@ const legacyActivityNav: NavItem[] = [
 ];
 
 const toolsNav: NavItem[] = [
+  { href: '/events', label: 'Events', icon: PartyPopper },
   { href: '/payments', label: 'Payments', icon: DollarSign },
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/photos', label: 'Photos', icon: Camera },

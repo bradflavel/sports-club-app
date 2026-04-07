@@ -81,6 +81,7 @@ export async function createVenue(
     name: string;
     address?: string | null;
     is_primary?: boolean;
+    categories?: string[];
     notes?: string | null;
   },
 ) {
@@ -102,6 +103,7 @@ export async function createVenue(
       name: venueData.name,
       address: venueData.address ?? null,
       is_primary: venueData.is_primary ?? false,
+      categories: venueData.categories ?? [],
       notes: venueData.notes ?? null,
     })
     .select()
@@ -112,7 +114,7 @@ export async function createVenue(
 
 export async function updateVenue(
   venueId: string,
-  venueData: Partial<Pick<ClubVenue, 'name' | 'address' | 'is_primary' | 'notes'>>,
+  venueData: Partial<Pick<ClubVenue, 'name' | 'address' | 'is_primary' | 'categories' | 'notes'>>,
 ) {
   const supabase = await createClient();
 

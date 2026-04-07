@@ -97,6 +97,7 @@ export interface ClubVenue {
   name: string;
   address: string | null;
   is_primary: boolean;
+  categories: string[];
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -347,6 +348,82 @@ export interface TrialEventDivision {
   division_id: string;
   created_at: string;
 }
+
+// Club Events
+export type ClubEventType = 'social' | 'fundraiser' | 'agm' | 'presentation' | 'meeting' | 'other';
+export type ClubEventStatus = 'draft' | 'published' | 'cancelled' | 'completed';
+export type ClubEventRegistrationStatus = 'registered' | 'waitlisted' | 'cancelled' | 'approved' | 'attended';
+
+export interface ClubEvent {
+  id: string;
+  organisation_id: string;
+  name: string;
+  description: string | null;
+  event_type: ClubEventType;
+  status: ClubEventStatus;
+  start_time: string;
+  end_time: string | null;
+  venue_id: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  max_attendees: number | null;
+  enable_waitlist: boolean;
+  cost_cents: number;
+  cost_description: string | null;
+  registration_required: boolean;
+  registration_opens: string | null;
+  registration_closes: string | null;
+  registration_requires_approval: boolean;
+  allow_guests: boolean;
+  max_guests_per_member: number;
+  collect_dietary_requirements: boolean;
+  food_provided: boolean;
+  alcohol_provided: boolean;
+  is_adults_only: boolean;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  is_members_only: boolean;
+  cover_image_url: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClubEventWithVenue extends ClubEvent {
+  venue: ClubVenue | null;
+  registration_count?: number;
+}
+
+export interface ClubEventRegistration {
+  id: string;
+  event_id: string;
+  member_id: string;
+  status: ClubEventRegistrationStatus;
+  guest_count: number;
+  guest_names: string | null;
+  dietary_requirements: string | null;
+  notes: string | null;
+  registered_at: string;
+  approved_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClubEventRegistrationWithMember extends ClubEventRegistration {
+  member: MemberWithProfile;
+}
+
+export const VENUE_CATEGORY_OPTIONS = [
+  { value: 'game', label: 'Game Venue' },
+  { value: 'training', label: 'Training Venue' },
+  { value: 'meeting', label: 'Meeting Space' },
+  { value: 'event', label: 'Event Space' },
+  { value: 'function', label: 'Function Centre' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 // Activity system interfaces
 export interface OrganisationModule {
@@ -673,6 +750,18 @@ export interface Database {
         Row: MembershipFeeSchedule & Record<string, unknown>;
         Insert: Omit<MembershipFeeSchedule, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
         Update: Partial<Omit<MembershipFeeSchedule, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      club_events: {
+        Row: ClubEvent & Record<string, unknown>;
+        Insert: Omit<ClubEvent, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<ClubEvent, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      club_event_registrations: {
+        Row: ClubEventRegistration & Record<string, unknown>;
+        Insert: Omit<ClubEventRegistration, 'id' | 'registered_at' | 'approved_at' | 'cancelled_at' | 'created_at' | 'updated_at'> & { registered_at?: string; approved_at?: string | null; cancelled_at?: string | null } & Record<string, unknown>;
+        Update: Partial<Omit<ClubEventRegistration, 'id' | 'created_at'>> & Record<string, unknown>;
         Relationships: [];
       };
     };
