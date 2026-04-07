@@ -36,6 +36,7 @@ export function StaffForm({
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<StaffInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(staffSchema) as any,
     defaultValues: {
       email: '',

@@ -164,6 +164,7 @@ export async function deleteVenue(venueId: string) {
 export async function getFeeSchedule(orgId: string) {
   const supabase = await createClient();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('membership_fee_schedule')
     .select('*')
@@ -189,6 +190,7 @@ export async function upsertFeeSchedule(
     label: entry.label ?? null,
   }));
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('membership_fee_schedule')
     .upsert(rows, { onConflict: 'organisation_id,membership_type' })
@@ -200,6 +202,7 @@ export async function upsertFeeSchedule(
 export async function deleteFeeEntry(id: string) {
   const supabase = await createClient();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from('membership_fee_schedule')
     .delete()

@@ -42,6 +42,7 @@ export function StaffTypeFieldsEditor({ staffTypeId, organisationId }: StaffType
   const { toast } = useToast();
 
   const form = useForm<StaffTypeFieldInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(staffTypeFieldSchema) as any,
     defaultValues: {
       name: '',

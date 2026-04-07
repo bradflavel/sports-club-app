@@ -40,6 +40,7 @@ export function StaffAccreditationForm({
   const { toast } = useToast();
 
   const form = useForm<StaffAccreditationInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(staffAccreditationSchema) as any,
     defaultValues: editingAccreditation
       ? {

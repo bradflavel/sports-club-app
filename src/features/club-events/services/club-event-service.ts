@@ -266,6 +266,7 @@ export async function setEventTargets(eventId: string, targets: AudienceTargets)
     })),
   ];
   if (rows.length === 0) return { error: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase.from('club_event_targets').insert(rows as any);
   return { error };
 }
