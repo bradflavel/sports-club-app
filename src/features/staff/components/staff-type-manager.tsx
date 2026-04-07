@@ -45,7 +45,7 @@ export function StaffTypeManager({ organisationId }: StaffTypeManagerProps) {
   const { toast } = useToast();
 
   const form = useForm<StaffTypeInput>({
-    resolver: zodResolver(staffTypeSchema),
+    resolver: zodResolver(staffTypeSchema) as any,
     defaultValues: {
       name: '',
       description: '',

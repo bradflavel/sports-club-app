@@ -42,7 +42,7 @@ export function StaffTypeFieldsEditor({ staffTypeId, organisationId }: StaffType
   const { toast } = useToast();
 
   const form = useForm<StaffTypeFieldInput>({
-    resolver: zodResolver(staffTypeFieldSchema),
+    resolver: zodResolver(staffTypeFieldSchema) as any,
     defaultValues: {
       name: '',
       field_type: 'text',

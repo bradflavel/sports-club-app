@@ -266,7 +266,7 @@ export async function setEventTargets(eventId: string, targets: AudienceTargets)
     })),
   ];
   if (rows.length === 0) return { error: null };
-  const { error } = await supabase.from('club_event_targets').insert(rows);
+  const { error } = await supabase.from('club_event_targets').insert(rows as any);
   return { error };
 }
 
@@ -276,7 +276,7 @@ export async function getEventTargets(eventId: string): Promise<AudienceTargets 
     .from('club_event_targets')
     .select('activity_id, division_id, activity_team_id')
     .eq('event_id', eventId);
-  const rows = data ?? [];
+  const rows = (data ?? []) as unknown as Array<{ activity_id: string | null; division_id: string | null; activity_team_id: string | null }>;
   return {
     activityIds: rows.filter((r) => r.activity_id).map((r) => r.activity_id as string),
     divisionIds: rows.filter((r) => r.division_id).map((r) => r.division_id as string),

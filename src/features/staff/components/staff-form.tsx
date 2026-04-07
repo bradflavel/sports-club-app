@@ -36,7 +36,7 @@ export function StaffForm({
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<StaffInput>({
-    resolver: zodResolver(staffSchema),
+    resolver: zodResolver(staffSchema) as any,
     defaultValues: {
       email: '',
       first_name: '',

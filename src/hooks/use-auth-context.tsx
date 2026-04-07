@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('id', user.id)
         .single();
-      setProfile(profileData);
+      setProfile(profileData as unknown as Profile | null);
 
       if (profileData?.organisation_id) {
         const { data: orgData } = await supabase
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', profileData.organisation_id)
           .single();
-        setOrganisation(orgData);
+        setOrganisation(orgData as unknown as Organisation | null);
       }
     }
 

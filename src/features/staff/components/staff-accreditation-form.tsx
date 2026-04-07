@@ -40,7 +40,7 @@ export function StaffAccreditationForm({
   const { toast } = useToast();
 
   const form = useForm<StaffAccreditationInput>({
-    resolver: zodResolver(staffAccreditationSchema),
+    resolver: zodResolver(staffAccreditationSchema) as any,
     defaultValues: editingAccreditation
       ? {
           name: editingAccreditation.name,

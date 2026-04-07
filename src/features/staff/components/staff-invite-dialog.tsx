@@ -44,7 +44,7 @@ export function StaffInviteDialog({
   const { toast } = useToast();
 
   const form = useForm<StaffInviteInput>({
-    resolver: zodResolver(staffInviteSchema),
+    resolver: zodResolver(staffInviteSchema) as any,
     defaultValues: {
       staff_type_id: staffTypes[0]?.id ?? '',
       email: '',
