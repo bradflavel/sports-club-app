@@ -23,6 +23,7 @@ import {
   Tent,
   ClipboardCheck,
   PartyPopper,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react';
 import { useEnabledModules } from '@/hooks/use-enabled-modules';
@@ -62,6 +63,7 @@ const coreNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/club', label: 'Club', icon: Building2 },
   { href: '/members', label: 'Members', icon: Users },
+  { href: '/staff', label: 'Staff', icon: UserCog },
 ];
 
 const legacyActivityNav: NavItem[] = [

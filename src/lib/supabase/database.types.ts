@@ -40,6 +40,11 @@ export type EventStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled
 export type AttendanceStatus = 'attending' | 'not_attending' | 'maybe' | 'attended' | 'absent' | 'late';
 export type TournamentStage = 'pool' | 'quarterfinal' | 'semifinal' | 'final' | 'third_place' | 'round_robin';
 
+// Staff system types
+export type StaffStatus = 'active' | 'inactive' | 'on_leave' | 'pending';
+export type StaffFieldType = 'text' | 'textarea' | 'url' | 'date' | 'select' | 'boolean' | 'file' | 'email' | 'phone';
+export type AccreditationStatus = 'current' | 'expired' | 'pending' | 'revoked';
+
 export interface Organisation {
   id: string;
   name: string;
@@ -599,6 +604,112 @@ export interface ActivityStandingWithTeam extends ActivityStanding {
   team: ActivityTeam;
 }
 
+// Staff system interfaces
+export interface StaffType {
+  id: string;
+  organisation_id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  requires_wwc: boolean;
+  is_publicly_visible: boolean;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffTypeField {
+  id: string;
+  staff_type_id: string;
+  organisation_id: string;
+  name: string;
+  field_type: StaffFieldType;
+  is_required: boolean;
+  options: string[] | null;
+  placeholder: string | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffRecord {
+  id: string;
+  profile_id: string;
+  organisation_id: string;
+  staff_type_id: string;
+  member_id: string | null;
+  status: StaffStatus;
+  position: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffWithProfile extends StaffRecord {
+  profile: Profile;
+  staff_type: StaffType;
+}
+
+export interface StaffFieldValue {
+  id: string;
+  staff_id: string;
+  staff_type_field_id: string;
+  organisation_id: string;
+  value: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffAccreditation {
+  id: string;
+  staff_id: string;
+  organisation_id: string;
+  name: string;
+  issuing_body: string | null;
+  credential_number: string | null;
+  issue_date: string | null;
+  expiry_date: string | null;
+  status: AccreditationStatus;
+  document_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffAccreditationTemplate {
+  id: string;
+  staff_type_id: string;
+  organisation_id: string;
+  name: string;
+  issuing_body: string | null;
+  is_required: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffInvite {
+  id: string;
+  organisation_id: string;
+  staff_type_id: string;
+  token: string;
+  email: string | null;
+  created_by: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  is_single_use: boolean;
+  created_at: string;
+}
+
+export interface StaffInviteWithDetails extends StaffInvite {
+  staff_type: StaffType;
+  creator: Profile;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -764,6 +875,48 @@ export interface Database {
         Update: Partial<Omit<ClubEventRegistration, 'id' | 'created_at'>> & Record<string, unknown>;
         Relationships: [];
       };
+      staff_types: {
+        Row: StaffType & Record<string, unknown>;
+        Insert: Omit<StaffType, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffType, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      staff_type_fields: {
+        Row: StaffTypeField & Record<string, unknown>;
+        Insert: Omit<StaffTypeField, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffTypeField, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      staff: {
+        Row: StaffRecord & Record<string, unknown>;
+        Insert: Omit<StaffRecord, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffRecord, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      staff_field_values: {
+        Row: StaffFieldValue & Record<string, unknown>;
+        Insert: Omit<StaffFieldValue, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffFieldValue, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      staff_accreditations: {
+        Row: StaffAccreditation & Record<string, unknown>;
+        Insert: Omit<StaffAccreditation, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffAccreditation, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      staff_accreditation_templates: {
+        Row: StaffAccreditationTemplate & Record<string, unknown>;
+        Insert: Omit<StaffAccreditationTemplate, 'id' | 'created_at' | 'updated_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffAccreditationTemplate, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
+      staff_invites: {
+        Row: StaffInvite & Record<string, unknown>;
+        Insert: Omit<StaffInvite, 'id' | 'created_at'> & Record<string, unknown>;
+        Update: Partial<Omit<StaffInvite, 'id' | 'created_at'>> & Record<string, unknown>;
+        Relationships: [];
+      };
     };
     Views: Record<string, { Row: Record<string, unknown>; Relationships: [] }>;
     Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>;
@@ -782,6 +935,9 @@ export interface Database {
       event_status: EventStatus;
       attendance_status: AttendanceStatus;
       tournament_stage: TournamentStage;
+      staff_status: StaffStatus;
+      staff_field_type: StaffFieldType;
+      accreditation_status: AccreditationStatus;
     };
   };
 }

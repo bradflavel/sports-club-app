@@ -17,6 +17,7 @@ import { RecentAnnouncementsWidget } from './recent-announcements-widget';
 import { getAdminDashboardDataClient } from '@/features/dashboard/services/dashboard-client-service';
 import { AgeTransitionAlert } from '@/features/members/components/age-transition-alert';
 import { ClubReviewReminder } from '@/features/club-profile/components/club-review-reminder';
+import { StaffExpiryAlert } from '@/features/staff/components/staff-expiry-alert';
 import { useOrganisation } from '@/hooks/use-organisation';
 import type { AdminDashboardStats } from '@/features/dashboard/services/dashboard-client-service';
 import type { ActivityEventWithTeams, PaymentWithMember, AnnouncementWithAuthor } from '@/lib/supabase/database.types';
@@ -124,6 +125,9 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
 
       {/* Age transition alert */}
       <AgeTransitionAlert orgId={orgId} />
+
+      {/* Staff accreditation expiry alert */}
+      <StaffExpiryAlert orgId={orgId} />
 
       {/* Club review reminder */}
       {organisation && <ClubReviewReminder organisation={organisation} />}
