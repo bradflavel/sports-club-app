@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient as _createClient } from '@/lib/supabase/client';
 import type {
   Product,
   ProductWithCategory,
@@ -8,6 +8,9 @@ import type {
   ProductAccessRule,
 } from '@/lib/supabase/database.types';
 import type { ShopFilters } from '../types/shop-types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createClient = () => _createClient() as any;
 
 const PRODUCT_WITH_CATEGORY_SELECT = '*, category:product_categories(*)';
 

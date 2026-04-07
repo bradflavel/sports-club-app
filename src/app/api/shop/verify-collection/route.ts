@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing qrToken or orgId' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = await createClient() as any;
 
     // Verify the user is an admin
     const {

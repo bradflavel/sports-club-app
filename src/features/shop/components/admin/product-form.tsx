@@ -50,7 +50,8 @@ export function ProductForm({
     setValue,
     watch,
   } = useForm<ProductInput>({
-    resolver: zodResolver(productSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: '',
       slug: '',

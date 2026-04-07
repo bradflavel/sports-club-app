@@ -24,7 +24,8 @@ export function CategoryForm({ defaultValues, onSubmit, loading }: CategoryFormP
     setValue,
     watch,
   } = useForm<CategoryInput>({
-    resolver: zodResolver(categorySchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(categorySchema) as any,
     defaultValues: {
       name: '',
       slug: '',

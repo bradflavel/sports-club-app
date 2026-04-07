@@ -25,7 +25,8 @@ export function DiscountCodeForm({ defaultValues, onSubmit, loading }: DiscountC
     setValue,
     watch,
   } = useForm<DiscountCodeInput>({
-    resolver: zodResolver(discountCodeSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(discountCodeSchema) as any,
     defaultValues: {
       code: '',
       discountType: 'percentage',

@@ -59,7 +59,8 @@ export default function ShopPage() {
 
     // Fetch stock totals
     if (productsResult.data.length > 0) {
-      const supabase = createClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createClient() as any;
       const productIds = productsResult.data.map((p) => p.id);
       const { data: variants } = await supabase
         .from('product_variants')

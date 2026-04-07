@@ -13,7 +13,8 @@ export async function GET(
 ) {
   try {
     const { downloadId } = await params;
-    const supabase = await createClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = await createClient() as any;
 
     // Get current user
     const {

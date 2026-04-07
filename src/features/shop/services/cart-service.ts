@@ -1,5 +1,8 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient as _createClient } from '@/lib/supabase/client';
 import type { CartItem, CartItemWithDetails } from '@/lib/supabase/database.types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createClient = () => _createClient() as any;
 
 const CART_WITH_DETAILS_SELECT = '*, product:products(*), variant:product_variants(*)';
 

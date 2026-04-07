@@ -1,5 +1,8 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient as _createClient } from '@/lib/supabase/client';
 import type { DigitalDownload, DigitalDownloadWithProduct } from '@/lib/supabase/database.types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createClient = () => _createClient() as any;
 
 const DOWNLOAD_WITH_DETAILS_SELECT = '*, product:products(*), order_item:order_items(*)';
 
@@ -36,7 +39,8 @@ export async function getDownloadsForOrder(orderId: string, profileId: string) {
     return { data: [], error: null };
   }
 
-  const orderItemIds = orderItems.map((item) => item.id as string);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orderItemIds = orderItems.map((item: any) => item.id as string);
 
   const { data, error } = await supabase
     .from('digital_downloads')

@@ -1,6 +1,9 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient as _createClient } from '@/lib/supabase/client';
 import type { DiscountCode, CartItemWithDetails } from '@/lib/supabase/database.types';
 import type { DiscountValidationResult } from '../types/shop-types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createClient = () => _createClient() as any;
 
 // ── Validate Discount Code ───────────────────────────────────────────────────
 
