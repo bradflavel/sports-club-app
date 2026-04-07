@@ -107,7 +107,7 @@ export default function MemberProfilePage() {
     }
 
     if (paymentResult.data) {
-      setPayments(paymentResult.data as PaymentRow[]);
+      setPayments(paymentResult.data as unknown as PaymentRow[]);
     }
 
     // Fetch guardian relationships
