@@ -263,12 +263,14 @@ export default function PaymentsPage() {
         title="Payments"
         actions={
           isAdminOrManager ? (
-            <Button asChild size="sm" className="gap-2">
-              <Link href="/payments/new">
-                <Plus className="h-4 w-4" />
-                Create Invoice
-              </Link>
-            </Button>
+            <div className="hidden sm:block">
+              <Button asChild size="sm" className="gap-2">
+                <Link href="/payments/new">
+                  <Plus className="h-4 w-4" />
+                  Create Invoice
+                </Link>
+              </Button>
+            </div>
           ) : undefined
         }
       />

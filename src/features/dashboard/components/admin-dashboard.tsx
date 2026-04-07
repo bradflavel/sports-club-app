@@ -67,7 +67,7 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="hidden sm:flex flex-wrap gap-2">
           <Button size="sm" onClick={() => router.push('/members?action=add')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Add Member

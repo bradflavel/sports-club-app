@@ -79,7 +79,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'fixed' }}>
           <thead className="border-b bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -87,7 +87,7 @@ export function DataTable<TData, TValue>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="h-12 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden"
+                    className={`h-12 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden${(header.column.columnDef.meta as { className?: string })?.className ? ` ${(header.column.columnDef.meta as { className?: string }).className}` : ''}`}
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder
@@ -107,7 +107,7 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="p-4 align-middle overflow-hidden text-ellipsis">
+                    <td key={cell.id} className={`p-4 align-middle overflow-hidden text-ellipsis${(cell.column.columnDef.meta as { className?: string })?.className ? ` ${(cell.column.columnDef.meta as { className?: string }).className}` : ''}`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -124,7 +124,7 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-2">
+      <div className="flex flex-col gap-2 px-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {enableRowSelection && (
             <span>

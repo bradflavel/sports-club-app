@@ -146,10 +146,12 @@ export default function TeamsPage() {
       <PageHeader
         title="Teams"
         actions={
-          <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Create Team
-          </Button>
+          <div className="hidden sm:block">
+            <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Create Team
+            </Button>
+          </div>
         }
       />
 

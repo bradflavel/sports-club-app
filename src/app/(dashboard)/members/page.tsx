@@ -245,7 +245,7 @@ export default function MembersPage() {
           </Badge>
         }
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleExportCsv} className="gap-2">
               <Download className="h-4 w-4" />
               Export CSV
@@ -272,7 +272,9 @@ export default function MembersPage() {
           onSearch={setSearch}
           className="w-full sm:max-w-xs"
         />
-        <MemberFilters filters={filters} onFiltersChange={setFilters} membershipTypes={membershipTypes} />
+        <div className="hidden sm:block">
+          <MemberFilters filters={filters} onFiltersChange={setFilters} membershipTypes={membershipTypes} />
+        </div>
       </div>
 
       {loading ? (

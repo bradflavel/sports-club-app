@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Search, Menu } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -21,7 +21,6 @@ interface TopBarProps {
   userFirstName?: string;
   userLastName?: string;
   userAvatar?: string | null;
-  onMenuClick?: () => void;
 }
 
 export function TopBar({
@@ -29,7 +28,6 @@ export function TopBar({
   userFirstName = '',
   userLastName = '',
   userAvatar,
-  onMenuClick,
 }: TopBarProps) {
   const router = useRouter();
 
@@ -42,9 +40,6 @@ export function TopBar({
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-4 lg:px-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
-          <Menu className="h-5 w-5" />
-        </Button>
         <h2 className="text-lg font-semibold">{orgName}</h2>
       </div>
 

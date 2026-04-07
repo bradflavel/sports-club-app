@@ -92,7 +92,7 @@ export function MobileNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background lg:hidden">
-      <div className="flex items-center justify-around py-2">
+      <div className="flex items-center justify-around pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         {mainItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
