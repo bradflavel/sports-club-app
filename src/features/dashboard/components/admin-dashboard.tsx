@@ -14,18 +14,13 @@ import { StatCard } from '@/components/shared/stat-card';
 import { UpcomingEventsWidget } from './upcoming-fixtures-widget';
 import { OutstandingPaymentsWidget } from './outstanding-payments-widget';
 import { RecentAnnouncementsWidget } from './recent-announcements-widget';
-import { createClient } from '@/lib/supabase/client';
+import { getAdminDashboardDataClient } from '@/features/dashboard/services/dashboard-client-service';
 import { AgeTransitionAlert } from '@/features/members/components/age-transition-alert';
 import { ClubReviewReminder } from '@/features/club-profile/components/club-review-reminder';
+import { StaffExpiryAlert } from '@/features/staff/components/staff-expiry-alert';
 import { useOrganisation } from '@/hooks/use-organisation';
+import type { AdminDashboardStats } from '@/features/dashboard/services/dashboard-client-service';
 import type { ActivityEventWithTeams, PaymentWithMember, AnnouncementWithAuthor } from '@/lib/supabase/database.types';
-
-interface AdminDashboardStats {
-  memberCount: number;
-  teamCount: number;
-  upcomingEventCount: number;
-  outstandingPaymentsTotal: number;
-}
 
 interface AdminDashboardProps {
   orgId: string;
@@ -46,75 +41,13 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
 
     async function fetchData() {
       setLoading(true);
-      const supabase = createClient();
-
-      const [
-        { count: memberCount },
-        { count: teamCount },
-        { count: eventCount },
-        { data: paymentRows },
-        { data: eventRows },
-        { data: announcementRows },
-      ] = await Promise.all([
-        supabase
-          .from('members')
-          .select('*', { count: 'exact', head: true })
-          .eq('organisation_id', orgId)
-          .eq('membership_status', 'active'),
-
-        supabase
-          .from('activity_teams')
-          .select('*', { count: 'exact', head: true })
-          .eq('organisation_id', orgId),
-
-        supabase
-          .from('activity_events')
-          .select('*', { count: 'exact', head: true })
-          .eq('organisation_id', orgId)
-          .eq('status', 'scheduled')
-          .gte('date_time', new Date().toISOString()),
-
-        supabase
-          .from('payments')
-          .select('*, member:members(*, profile:profiles(*))')
-          .eq('organisation_id', orgId)
-          .in('status', ['pending', 'overdue'])
-          .order('due_date', { ascending: true })
-          .limit(5),
-
-        supabase
-          .from('activity_events')
-          .select('*, home_team:activity_teams!activity_events_home_team_id_fkey(*), away_team:activity_teams!activity_events_away_team_id_fkey(*), activity:activities(*)')
-          .eq('organisation_id', orgId)
-          .eq('status', 'scheduled')
-          .gte('date_time', new Date().toISOString())
-          .order('date_time', { ascending: true })
-          .limit(5),
-
-        supabase
-          .from('announcements')
-          .select('*, author:profiles(*)')
-          .eq('organisation_id', orgId)
-          .order('published_at', { ascending: false })
-          .limit(3),
-      ]);
-
-      const outstandingPaymentsTotal = paymentRows
-        ? (paymentRows as { amount_cents: number }[]).reduce(
-            (sum, p) => sum + p.amount_cents,
-            0
-          ) / 100
-        : 0;
-
-      setStats({
-        memberCount: memberCount ?? 0,
-        teamCount: teamCount ?? 0,
-        upcomingEventCount: eventCount ?? 0,
-        outstandingPaymentsTotal,
-      });
-      setEvents((eventRows ?? []) as unknown as ActivityEventWithTeams[]);
-      setPayments((paymentRows ?? []) as unknown as PaymentWithMember[]);
-      setAnnouncements((announcementRows ?? []) as unknown as AnnouncementWithAuthor[]);
+      const { data } = await getAdminDashboardDataClient(orgId);
+      if (data) {
+        setStats(data.stats);
+        setEvents(data.events);
+        setPayments(data.payments);
+        setAnnouncements(data.announcements);
+      }
       setLoading(false);
     }
 
@@ -192,6 +125,9 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
 
       {/* Age transition alert */}
       <AgeTransitionAlert orgId={orgId} />
+
+      {/* Staff accreditation expiry alert */}
+      <StaffExpiryAlert orgId={orgId} />
 
       {/* Club review reminder */}
       {organisation && <ClubReviewReminder organisation={organisation} />}

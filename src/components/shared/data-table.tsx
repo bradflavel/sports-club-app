@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -20,7 +20,6 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  searchKey?: string;
   searchValue?: string;
   pageSize?: number;
   enableRowSelection?: boolean;
@@ -30,7 +29,6 @@ interface DataTableProps<TData, TValue> {
 export function DataTable<TData, TValue>({
   columns,
   data,
-  searchKey,
   searchValue,
   pageSize = 20,
   enableRowSelection = false,
@@ -58,10 +56,6 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange: (updater) => {
       const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
       setRowSelection(newSelection);
-      if (onRowSelectionChange) {
-        const selectedRows = Object.keys(newSelection).map((idx) => data[parseInt(idx)]);
-        onRowSelectionChange(selectedRows);
-      }
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -71,6 +65,17 @@ export function DataTable<TData, TValue>({
       pagination: { pageSize },
     },
   });
+
+  // Notify parent of selection changes using TanStack's row model
+  const onRowSelectionChangeRef = useRef(onRowSelectionChange);
+  onRowSelectionChangeRef.current = onRowSelectionChange;
+
+  useEffect(() => {
+    if (onRowSelectionChangeRef.current) {
+      const selected = table.getSelectedRowModel().rows.map((row) => row.original);
+      onRowSelectionChangeRef.current(selected);
+    }
+  }, [rowSelection, table]);
 
   return (
     <div className="space-y-4">

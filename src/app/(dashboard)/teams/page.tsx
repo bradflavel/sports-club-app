@@ -23,7 +23,7 @@ import { TeamCard } from '@/features/teams/components/team-card';
 import { TeamForm } from '@/features/teams/components/team-form';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import type { TeamWithDetails, Season, Profile } from '@/features/teams/types/team-types';
 import type { TeamInput } from '@/features/teams/schemas/team-schemas';
@@ -32,7 +32,7 @@ const NONE_VALUE = '__none__';
 
 export default function TeamsPage() {
   const { organisation, loading: orgLoading } = useOrganisation();
-  const { profile } = useUser();
+  const { profile } = useAuth();
   const { toast } = useToast();
 
   const [teams, setTeams] = useState<TeamWithDetails[]>([]);

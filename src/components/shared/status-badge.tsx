@@ -33,8 +33,9 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
-  const variant = statusColorMap[status] || 'default';
-  const displayLabel = label || status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  const safeStatus = status || '';
+  const variant = statusColorMap[safeStatus] || 'default';
+  const displayLabel = label || safeStatus.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) || 'Unknown';
 
   return (
     <span

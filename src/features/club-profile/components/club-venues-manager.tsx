@@ -16,6 +16,8 @@ import {
   deleteVenue,
 } from '@/features/club-profile/services/club-profile-service';
 import type { ClubVenue } from '@/lib/supabase/database.types';
+import { VENUE_CATEGORY_OPTIONS } from '@/lib/supabase/database.types';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ClubVenuesManagerProps {
   orgId: string;
@@ -27,10 +29,11 @@ interface VenueFormState {
   name: string;
   address: string;
   is_primary: boolean;
+  categories: string[];
   notes: string;
 }
 
-const emptyForm: VenueFormState = { name: '', address: '', is_primary: false, notes: '' };
+const emptyForm: VenueFormState = { name: '', address: '', is_primary: false, categories: [], notes: '' };
 
 export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManagerProps) {
   const { toast } = useToast();
@@ -50,6 +53,15 @@ export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManage
     setShowAddForm(true);
   };
 
+  const toggleCategory = (cat: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      categories: prev.categories.includes(cat)
+        ? prev.categories.filter((c) => c !== cat)
+        : [...prev.categories, cat],
+    }));
+  };
+
   const startEdit = (venue: ClubVenue) => {
     setShowAddForm(false);
     setEditingId(venue.id);
@@ -57,6 +69,7 @@ export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManage
       name: venue.name,
       address: venue.address ?? '',
       is_primary: venue.is_primary,
+      categories: venue.categories ?? [],
       notes: venue.notes ?? '',
     });
   };
@@ -79,6 +92,7 @@ export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManage
         name: formState.name.trim(),
         address: formState.address.trim() || null,
         is_primary: formState.is_primary,
+        categories: formState.categories,
         notes: formState.notes.trim() || null,
       });
 
@@ -109,6 +123,7 @@ export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManage
         name: formState.name.trim(),
         address: formState.address.trim() || null,
         is_primary: formState.is_primary,
+        categories: formState.categories,
         notes: formState.notes.trim() || null,
       });
 
@@ -165,6 +180,21 @@ export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManage
               onChange={(e) => handleFieldChange('address', e.target.value)}
               placeholder="123 Sport St, Suburb NSW 2000"
             />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Venue Type</Label>
+          <div className="flex flex-wrap gap-3">
+            {VENUE_CATEGORY_OPTIONS.map((cat) => (
+              <label key={cat.value} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={formState.categories.includes(cat.value)}
+                  onCheckedChange={() => toggleCategory(cat.value)}
+                />
+                {cat.label}
+              </label>
+            ))}
           </div>
         </div>
 
@@ -239,6 +269,18 @@ export function ClubVenuesManager({ orgId, venues, onChanged }: ClubVenuesManage
                 </div>
                 {venue.address && (
                   <p className="text-sm text-muted-foreground">{venue.address}</p>
+                )}
+                {venue.categories && venue.categories.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {venue.categories.map((cat) => {
+                      const label = VENUE_CATEGORY_OPTIONS.find((o) => o.value === cat)?.label ?? cat;
+                      return (
+                        <Badge key={cat} variant="secondary" className="text-xs">
+                          {label}
+                        </Badge>
+                      );
+                    })}
+                  </div>
                 )}
                 {venue.notes && (
                   <p className="text-xs text-muted-foreground">{venue.notes}</p>

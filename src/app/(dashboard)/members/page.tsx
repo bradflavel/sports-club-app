@@ -16,7 +16,7 @@ import { MemberFilters } from '@/features/members/components/member-filters';
 import { getMembershipTypes } from '@/features/members/services/membership-type-service';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { calculateAge } from '@/lib/format';
 import type { MemberWithProfile, MemberFilters as MemberFiltersType, MembershipStatus } from '@/features/members/types/member-types';
@@ -24,7 +24,7 @@ import type { MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 export default function MembersPage() {
   const { organisation, loading: orgLoading } = useOrganisation();
-  const { profile, loading: userLoading } = useUser();
+  const { profile, loading: userLoading } = useAuth();
   const { toast } = useToast();
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 

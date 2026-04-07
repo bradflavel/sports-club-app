@@ -9,14 +9,14 @@ import { Progress } from '@/components/ui/progress';
 import { PageHeader } from '@/components/shared/page-header';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { createClient } from '@/lib/supabase/client';
 import { getCompletionItems, getCompletionPercentage } from '@/features/club-profile/components/club-completion-tracker';
 import type { ClubVenue, MembershipTypeRecord } from '@/lib/supabase/database.types';
 
 export default function ClubCompletionPage() {
   const { organisation, loading: orgLoading } = useOrganisation();
-  const { profile, loading: userLoading } = useUser();
+  const { profile, loading: userLoading } = useAuth();
   const router = useRouter();
 
   const [venues, setVenues] = useState<ClubVenue[]>([]);

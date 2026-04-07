@@ -77,6 +77,7 @@ const mockProfile = {
   avatar_url: null,
   organisation_id: 'org-1',
   role: 'member',
+  preferred_name: null,
   emergency_contact_name: null,
   emergency_contact_phone: null,
   created_at: '2024-01-01T00:00:00Z',

@@ -19,8 +19,12 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (password.length < 6) {
-      toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+    if (password.length < 8) {
+      toast({ title: 'Password must be at least 8 characters', variant: 'destructive' });
+      return;
+    }
+    if (!/\d/.test(password)) {
+      toast({ title: 'Password must contain at least one number', variant: 'destructive' });
       return;
     }
     if (password !== confirmPassword) {
@@ -56,9 +60,9 @@ export default function ResetPasswordPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters with a number"
             required
-            minLength={6}
+            minLength={8}
           />
         </div>
         <div className="space-y-2">

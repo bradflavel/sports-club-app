@@ -5,33 +5,49 @@ import { createClient } from '@/lib/supabase/client';
 import type { Organisation } from '@/lib/supabase/database.types';
 import { useUser } from './use-user';
 
+// Cache to avoid re-fetching when multiple components use this hook
+let cachedOrg: Organisation | null = null;
+let cachedOrgId: string | null = null;
+
 export function useOrganisation() {
   const { profile, loading: userLoading } = useUser();
-  const [organisation, setOrganisation] = useState<Organisation | null>(null);
+  const [organisation, setOrganisation] = useState<Organisation | null>(cachedOrg);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (userLoading) return;
 
-    async function getOrganisation() {
-      if (!profile?.organisation_id) {
-        setLoading(false);
-        return;
-      }
+    const orgId = profile?.organisation_id ?? null;
 
+    if (!orgId) {
+      setOrganisation(null);
+      setLoading(false);
+      return;
+    }
+
+    // Use cache if same org
+    if (cachedOrg && cachedOrgId === orgId) {
+      setOrganisation(cachedOrg);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchOrg() {
       const supabase = createClient();
       const { data } = await supabase
         .from('organisations')
         .select('*')
-        .eq('id', profile.organisation_id)
+        .eq('id', orgId!)
         .single();
 
+      cachedOrg = data;
+      cachedOrgId = orgId;
       setOrganisation(data);
       setLoading(false);
     }
 
-    getOrganisation();
-  }, [profile, userLoading]);
+    fetchOrg();
+  }, [profile?.organisation_id, userLoading]);
 
   return { organisation, loading: loading || userLoading };
 }

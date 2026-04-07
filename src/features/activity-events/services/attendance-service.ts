@@ -81,6 +81,21 @@ export async function bulkMarkAttendance(
   };
 }
 
+export async function getTeamMembersForActivityTeams(activityTeamIds: string[]) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('activity_team_members')
+    .select('*, member:members(*, profile:profiles(*))')
+    .in('activity_team_id', activityTeamIds)
+    .order('joined_at', { ascending: true });
+
+  return {
+    data: data as unknown as import('@/lib/supabase/database.types').ActivityTeamMemberWithDetails[] | null,
+    error,
+  };
+}
+
 export async function getAttendanceSummaryForActivity(activityId: string) {
   const supabase = createClient();
 

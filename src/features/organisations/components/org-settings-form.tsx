@@ -13,7 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { createClient } from '@/lib/supabase/client';
+import {
+  updateOrganisationClient,
+  uploadOrgLogoClient,
+} from '@/features/organisations/services/org-client-service';
 import { useToast } from '@/components/ui/use-toast';
 import { SPORT_TYPE_OPTIONS } from '@/lib/constants';
 import type { Organisation, SportType } from '@/lib/supabase/database.types';
@@ -49,24 +52,14 @@ export function OrgSettingsForm({ organisation }: OrgSettingsFormProps) {
 
     setLogoUploading(true);
     try {
-      const supabase = createClient();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${organisation.id}/logo-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(fileName, file, { contentType: file.type, upsert: true });
+      const { publicUrl, error: uploadError } = await uploadOrgLogoClient(organisation.id, file);
 
       if (uploadError) {
         toast({ title: 'Upload failed', description: uploadError.message, variant: 'destructive' });
         return;
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('logos').getPublicUrl(fileName);
-
-      setFormData((prev) => ({ ...prev, logo_url: publicUrl }));
+      setFormData((prev) => ({ ...prev, logo_url: publicUrl ?? '' }));
       toast({ title: 'Logo uploaded', description: 'Logo uploaded successfully.' });
     } catch {
       toast({ title: 'Error', description: 'Failed to upload logo.', variant: 'destructive' });
@@ -79,25 +72,20 @@ export function OrgSettingsForm({ organisation }: OrgSettingsFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('organisations')
-        .update({
-          name: formData.name,
-          sport_type: formData.sport_type as SportType,
-          contact_email: formData.contact_email || null,
-          contact_phone: formData.contact_phone || null,
-          address: formData.address || null,
-          website: formData.website || null,
-          primary_colour: formData.primary_colour,
-          secondary_colour: formData.secondary_colour,
-          logo_url: formData.logo_url || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', organisation.id);
+      const { error } = await updateOrganisationClient(organisation.id, {
+        name: formData.name,
+        sport_type: formData.sport_type as SportType,
+        contact_email: formData.contact_email || null,
+        contact_phone: formData.contact_phone || null,
+        address: formData.address || null,
+        website: formData.website || null,
+        primary_colour: formData.primary_colour,
+        secondary_colour: formData.secondary_colour,
+        logo_url: formData.logo_url || null,
+      });
 
       if (error) {
-        toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+        toast({ title: 'Save failed', description: (error as Error).message, variant: 'destructive' });
         return;
       }
 
