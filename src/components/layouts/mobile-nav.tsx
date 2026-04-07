@@ -20,6 +20,7 @@ import {
   Dumbbell,
   Tent,
   PartyPopper,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,7 @@ export function MobileNav() {
 
   const moreItems = [
     { href: '/club', label: 'Club', icon: Building2 },
+    { href: '/staff', label: 'Staff', icon: UserCog },
     ...restModules,
     ...(moduleNavItems.length === 0 ? legacyMoreItems : []),
     { href: '/events', label: 'Events', icon: PartyPopper },

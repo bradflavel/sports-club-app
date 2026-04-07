@@ -25,7 +25,7 @@ import {
 } from '@/features/activities/services/activity-service';
 import { ACTIVITY_TYPE_CONFIG } from '@/lib/constants';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -80,7 +80,7 @@ export function ActivityDetailPageContent({ activityId }: { activityId: string }
   const { organisation, loading: orgLoading } = useOrganisation();
   const { toast } = useToast();
 
-  const { profile } = useUser();
+  const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
   const [activity, setActivity] = useState<Activity | null>(null);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);

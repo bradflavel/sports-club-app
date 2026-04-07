@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { generateSlug } from '@/lib/utils';
 import { SPORT_TYPE_OPTIONS } from '@/lib/constants';
 import { createDefaultTypes } from '@/features/members/services/membership-type-service';
+import { createDefaultStaffTypes } from '@/features/staff/services/staff-type-service';
 import type { SportType } from '@/lib/supabase/database.types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -202,8 +203,9 @@ function StepCreateClub({
         return;
       }
 
-      // Create default membership types for the new org
+      // Create default membership types and staff types for the new org
       await createDefaultTypes(org.id);
+      await createDefaultStaffTypes(org.id);
 
       // Set profile as admin via trusted RPC
       const { error: profileError } = await supabase

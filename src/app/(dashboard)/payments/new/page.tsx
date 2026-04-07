@@ -10,7 +10,7 @@ import { InvoiceForm } from '@/features/payments/components/invoice-form';
 import { BulkInvoiceForm } from '@/features/payments/components/bulk-invoice-form';
 import { createClient } from '@/lib/supabase/client';
 import { useOrganisation } from '@/hooks/use-organisation';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { dollarsToCents } from '@/lib/format';
 import type { PaymentInput, BulkInvoiceInput } from '@/features/payments/schemas/payment-schemas';
@@ -22,7 +22,7 @@ type Mode = 'single' | 'bulk';
 export default function NewPaymentPage() {
   const router = useRouter();
   const { organisation } = useOrganisation();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [mode, setMode] = useState<Mode>('single');
@@ -72,10 +72,10 @@ export default function NewPaymentPage() {
         amount_cents: dollarsToCents(data.amount),
         description: data.description,
         payment_type: data.paymentType as PaymentType,
-        status: 'pending',
+        payment_status: 'pending',
         due_date: data.dueDate,
-        paid_date: null,
-        stripe_payment_id: null,
+        paid_at: null,
+        stripe_payment_intent_id: null,
         created_by: user.id,
       });
 
@@ -112,10 +112,10 @@ export default function NewPaymentPage() {
         amount_cents: amountCents,
         description: data.description,
         payment_type: data.paymentType as PaymentType,
-        status: 'pending' as const,
+        payment_status: 'pending' as const,
         due_date: data.dueDate,
-        paid_date: null,
-        stripe_payment_id: null,
+        paid_at: null,
+        stripe_payment_intent_id: null,
         created_by: user.id,
       }));
 

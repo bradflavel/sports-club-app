@@ -12,7 +12,7 @@ import { PaymentTable } from '@/features/payments/components/payment-table';
 import { PaymentSummaryCards } from '@/features/payments/components/payment-summary-cards';
 import { PaymentFilters } from '@/features/payments/components/payment-filters';
 import { createClient } from '@/lib/supabase/client';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -23,7 +23,7 @@ import type { MemberWithProfile } from '@/features/members/types/member-types';
 import type { PaymentStatus } from '@/lib/supabase/database.types';
 
 export default function PaymentsPage() {
-  const { profile, loading: userLoading } = useUser();
+  const { profile, loading: userLoading } = useAuth();
   const { organisation, loading: orgLoading } = useOrganisation();
   const { toast } = useToast();
 
@@ -80,7 +80,7 @@ export default function PaymentsPage() {
     }
 
     if (filters.status && filters.status.length > 0) {
-      query = query.in('status', filters.status as PaymentStatus[]);
+      query = query.in('payment_status', filters.status as PaymentStatus[]);
     }
 
     if (filters.paymentType && filters.paymentType.length > 0) {
@@ -118,7 +118,7 @@ export default function PaymentsPage() {
     const supabase = createClient();
     const { data: rows, error } = await supabase
       .from('payments')
-      .select('amount_cents, status, due_date, paid_date, member_id')
+      .select('amount_cents, payment_status, due_date, paid_at, member_id')
       .eq('organisation_id', organisation.id);
 
     if (error || !rows) return;
@@ -134,12 +134,12 @@ export default function PaymentsPage() {
     const membersWithBalanceSet = new Set<string>();
 
     for (const p of rows) {
-      if (p.status === 'pending' || p.status === 'overdue') {
+      if (p.payment_status === 'pending' || p.payment_status === 'overdue') {
         totalOutstanding += p.amount_cents;
         membersWithBalanceSet.add(p.member_id);
       }
-      if (p.status === 'overdue') overdueCount++;
-      if (p.status === 'paid' && p.paid_date && p.paid_date >= startOfMonth) {
+      if (p.payment_status === 'overdue') overdueCount++;
+      if (p.payment_status === 'paid' && p.paid_at && p.paid_at >= startOfMonth) {
         collectedThisMonth += p.amount_cents;
       }
     }
@@ -178,7 +178,7 @@ export default function PaymentsPage() {
     const today = new Date().toISOString().split('T')[0];
     const { error } = await supabase
       .from('payments')
-      .update({ status: 'paid', paid_date: today, updated_at: new Date().toISOString() })
+      .update({ payment_status: 'paid', paid_at: today, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) {
@@ -194,7 +194,7 @@ export default function PaymentsPage() {
     const supabase = createClient();
     const { error } = await supabase
       .from('payments')
-      .update({ status: 'refunded', updated_at: new Date().toISOString() })
+      .update({ payment_status: 'refunded', updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) {
@@ -229,7 +229,7 @@ export default function PaymentsPage() {
 
     const { error } = await supabase
       .from('payments')
-      .update({ status: 'paid', paid_date: today, updated_at: new Date().toISOString() })
+      .update({ payment_status: 'paid', paid_at: today, updated_at: new Date().toISOString() })
       .in('id', ids);
 
     if (error) {
@@ -246,12 +246,12 @@ export default function PaymentsPage() {
 
   // Member-view summary stats
   const totalOwed = payments
-    .filter((p) => p.status === 'pending' || p.status === 'overdue')
+    .filter((p) => p.payment_status === 'pending' || p.payment_status === 'overdue')
     .reduce((sum, p) => sum + p.amount_cents, 0);
 
   const nextDue = payments
-    .filter((p) => p.status === 'pending' || p.status === 'overdue')
-    .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+    .filter((p) => p.payment_status === 'pending' || p.payment_status === 'overdue')
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))[0];
 
   if (orgLoading || userLoading) {
     return <PageSkeleton />;
@@ -294,8 +294,8 @@ export default function PaymentsPage() {
             />
             <StatCard
               title="Next Payment Due"
-              value={nextDue ? formatDate(nextDue.due_date) : 'None'}
-              subtitle={nextDue ? nextDue.description : 'No upcoming payments'}
+              value={nextDue?.due_date ? formatDate(nextDue.due_date) : 'None'}
+              subtitle={nextDue ? nextDue.description ?? undefined : 'No upcoming payments'}
               icon={Calendar}
             />
           </div>

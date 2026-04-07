@@ -234,6 +234,149 @@ export async function getRegistrationCount(eventId: string) {
   return { count: count ?? 0, error };
 }
 
+// ── Event Targets (audience) ─────────────────────────────────────────────────
+
+export interface AudienceTargets {
+  activityIds: string[];
+  divisionIds: string[];
+  teamIds: string[];
+}
+
+export async function setEventTargets(eventId: string, targets: AudienceTargets) {
+  const supabase = createClient();
+  await supabase.from('club_event_targets').delete().eq('event_id', eventId);
+  const rows = [
+    ...targets.activityIds.map((id) => ({
+      event_id: eventId,
+      activity_id: id,
+      division_id: null,
+      activity_team_id: null,
+    })),
+    ...targets.divisionIds.map((id) => ({
+      event_id: eventId,
+      activity_id: null,
+      division_id: id,
+      activity_team_id: null,
+    })),
+    ...targets.teamIds.map((id) => ({
+      event_id: eventId,
+      activity_id: null,
+      division_id: null,
+      activity_team_id: id,
+    })),
+  ];
+  if (rows.length === 0) return { error: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('club_event_targets').insert(rows as any);
+  return { error };
+}
+
+export async function getEventTargets(eventId: string): Promise<AudienceTargets & { error: unknown }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('club_event_targets')
+    .select('activity_id, division_id, activity_team_id')
+    .eq('event_id', eventId);
+  const rows = (data ?? []) as unknown as Array<{ activity_id: string | null; division_id: string | null; activity_team_id: string | null }>;
+  return {
+    activityIds: rows.filter((r) => r.activity_id).map((r) => r.activity_id as string),
+    divisionIds: rows.filter((r) => r.division_id).map((r) => r.division_id as string),
+    teamIds: rows.filter((r) => r.activity_team_id).map((r) => r.activity_team_id as string),
+    error,
+  };
+}
+
+// Hierarchical data for the audience picker:
+// Activity → Divisions → Teams (+ child activities like training/trials)
+export interface PickerTeam {
+  id: string;
+  name: string;
+}
+export interface PickerDivision {
+  id: string;
+  name: string;
+  teams: PickerTeam[];
+}
+export interface PickerActivity {
+  id: string;
+  name: string;
+  activity_type: string;
+  divisions: PickerDivision[];
+  childActivities: { id: string; name: string; activity_type: string }[];
+}
+
+export async function getActivitiesForEventPicker(orgId: string) {
+  const supabase = createClient();
+
+  const [activitiesRes, divisionsRes, teamsRes] = await Promise.all([
+    supabase
+      .from('activities')
+      .select('id, name, activity_type, parent_activity_id')
+      .eq('organisation_id', orgId)
+      .eq('is_current', true)
+      .order('name'),
+    supabase
+      .from('competition_divisions')
+      .select('id, activity_id, name, age_group, gender')
+      .order('display_order'),
+    supabase
+      .from('activity_teams')
+      .select('id, activity_id, name, division, is_own_team')
+      .eq('is_own_team', true)
+      .order('name'),
+  ]);
+
+  if (activitiesRes.error) return { data: [], error: activitiesRes.error };
+
+  const allActivities = activitiesRes.data ?? [];
+  const allDivisions = divisionsRes.data ?? [];
+  const allTeams = teamsRes.data ?? [];
+
+  const topLevel = allActivities.filter((a) => !a.parent_activity_id);
+  const children = allActivities.filter((a) => a.parent_activity_id);
+
+  const result: PickerActivity[] = topLevel.map((parent) => {
+    // Divisions for this activity
+    const divisions: PickerDivision[] = allDivisions
+      .filter((d) => d.activity_id === parent.id)
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        teams: allTeams
+          .filter((t) => t.activity_id === parent.id && t.division === d.name)
+          .map((t) => ({ id: t.id, name: t.name === 'Roster' ? `${d.name} Roster` : t.name })),
+      }));
+
+    // Child activities (training, trials, etc.)
+    const childActivities = children
+      .filter((c) => c.parent_activity_id === parent.id)
+      .map((c) => ({ id: c.id, name: c.name, activity_type: c.activity_type }));
+
+    return {
+      id: parent.id,
+      name: parent.name,
+      activity_type: parent.activity_type,
+      divisions,
+      childActivities,
+    };
+  });
+
+  // Standalone activities without parents or children
+  for (const act of allActivities) {
+    if (act.parent_activity_id) continue;
+    if (result.some((r) => r.id === act.id)) continue;
+    result.push({
+      id: act.id,
+      name: act.name,
+      activity_type: act.activity_type,
+      divisions: [],
+      childActivities: [],
+    });
+  }
+
+  return { data: result, error: null };
+}
+
 // ── Venues ────────────────────────────────────────────────────────────────────
 
 export async function getVenuesForEvents(orgId: string) {

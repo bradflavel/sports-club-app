@@ -3,12 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { AdminDashboard } from '@/features/dashboard/components/admin-dashboard';
 import { MemberDashboard } from '@/features/dashboard/components/member-dashboard';
 
 export default function DashboardPage() {
-  const { profile, loading } = useUser();
+  const { profile, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

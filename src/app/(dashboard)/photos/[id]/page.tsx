@@ -9,7 +9,7 @@ import { PhotoGallery } from '@/features/photos/components/photo-gallery';
 import { PhotoUpload } from '@/features/photos/components/photo-upload';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { createClient } from '@/lib/supabase/client';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/format';
 import type { PhotoAlbum, PhotoItem } from '@/lib/supabase/database.types';
@@ -17,7 +17,7 @@ import { TableSkeleton } from '@/components/shared/loading-skeleton';
 
 export default function AlbumDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { profile } = useUser();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const [album, setAlbum] = useState<PhotoAlbum | null>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -36,8 +36,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         .eq('album_id', id)
         .order('created_at', { ascending: false }),
     ]);
-    setAlbum(albumRes.data);
-    setPhotos(photosRes.data || []);
+    setAlbum(albumRes.data as unknown as PhotoAlbum | null);
+    setPhotos((photosRes.data || []) as unknown as PhotoItem[]);
     setLoading(false);
   }, [id]);
 
