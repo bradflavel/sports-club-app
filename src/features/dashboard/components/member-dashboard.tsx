@@ -112,7 +112,7 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
           .from('payments')
           .select('*')
           .eq('member_id', memberId)
-          .in('status', ['pending', 'overdue'])
+          .in('payment_status', ['pending', 'overdue'])
           .order('due_date', { ascending: true }),
 
         supabase
@@ -150,7 +150,7 @@ export function MemberDashboard({ profile }: MemberDashboardProps) {
             .from('payments')
             .select('amount_cents')
             .eq('member_id', minor.id)
-            .in('status', ['pending', 'overdue']);
+            .in('payment_status', ['pending', 'overdue']);
 
           const outstanding = (depPayments ?? []).reduce(
             (sum: number, p: { amount_cents: number }) => sum + p.amount_cents,

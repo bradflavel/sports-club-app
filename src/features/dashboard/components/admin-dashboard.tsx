@@ -78,7 +78,7 @@ export function AdminDashboard({ orgId }: AdminDashboardProps) {
           .from('payments')
           .select('*, member:members(*, profile:profiles(*))')
           .eq('organisation_id', orgId)
-          .in('status', ['pending', 'overdue'])
+          .in('payment_status', ['pending', 'overdue'])
           .order('due_date', { ascending: true })
           .limit(5),
 

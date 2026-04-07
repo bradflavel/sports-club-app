@@ -529,13 +529,13 @@ export default function MemberProfilePage() {
                           {payment.payment_type.replace(/_/g, ' ')}
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge status={payment.status} />
+                          <StatusBadge status={payment.payment_status} />
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {formatDate(payment.due_date)}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {payment.paid_date ? formatDate(payment.paid_date) : '—'}
+                          {payment.paid_at ? formatDate(payment.paid_at) : '—'}
                         </td>
                       </tr>
                     ))}

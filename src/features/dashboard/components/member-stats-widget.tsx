@@ -29,7 +29,7 @@ export function MemberStatsWidget({ payments, loading = false }: MemberStatsWidg
   const totalOwed = payments.reduce((sum, p) => sum + p.amount_cents, 0);
 
   const nextPayment = payments
-    .filter((p) => p.status !== 'paid' && p.status !== 'cancelled')
+    .filter((p) => p.payment_status !== 'paid' && p.payment_status !== 'cancelled')
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
 
   if (loading) {

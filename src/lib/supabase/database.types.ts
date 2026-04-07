@@ -241,15 +241,18 @@ export interface Payment {
   organisation_id: string;
   member_id: string;
   amount_cents: number;
-  description: string;
+  currency: string;
+  description: string | null;
   payment_type: PaymentType;
-  status: PaymentStatus;
-  due_date: string;
-  paid_date: string | null;
-  stripe_payment_id: string | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
+  payment_status: PaymentStatus;
+  due_date: string | null;
+  paid_at: string | null;
+  receipt_url: string | null;
+  stripe_payment_intent_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface PaymentWithMember extends Payment {

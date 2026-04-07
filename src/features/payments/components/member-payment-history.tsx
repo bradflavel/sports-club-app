@@ -43,9 +43,9 @@ const columns: ColumnDef<Payment>[] = [
   },
   {
     id: 'status',
-    accessorKey: 'status',
+    accessorKey: 'payment_status',
     header: 'Status',
-    cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    cell: ({ row }) => <StatusBadge status={row.original.payment_status} />,
   },
   {
     id: 'dueDate',
@@ -57,11 +57,11 @@ const columns: ColumnDef<Payment>[] = [
   },
   {
     id: 'paidDate',
-    accessorKey: 'paid_date',
+    accessorKey: 'paid_at',
     header: 'Paid Date',
     cell: ({ row }) => (
       <span className="text-sm text-muted-foreground">
-        {row.original.paid_date ? formatDate(row.original.paid_date) : '—'}
+        {row.original.paid_at ? formatDate(row.original.paid_at) : '—'}
       </span>
     ),
   },
