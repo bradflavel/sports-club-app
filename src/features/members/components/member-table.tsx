@@ -73,6 +73,7 @@ function createColumns(
     {
       id: 'select',
       size: 40,
+      meta: { className: 'hidden sm:table-cell' },
       header: ({ table }) => (
         <Checkbox
           checked={
@@ -96,6 +97,7 @@ function createColumns(
     {
       id: 'name',
       size: 200,
+      enableHiding: false,
       accessorFn: (row) => `${row.profile.first_name} ${row.profile.last_name}`,
       header: ({ column }) => (
         <Button
@@ -229,6 +231,7 @@ function createColumns(
     {
       id: 'actions',
       size: 50,
+      enableHiding: false,
       header: '',
       cell: ({ row }) => {
         const member = row.original;
