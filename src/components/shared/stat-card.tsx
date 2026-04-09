@@ -38,7 +38,7 @@ export function StatCard({
   return (
     <div className={cn('relative overflow-hidden rounded-xl border bg-card shadow-sm', className)}>
       <div className={cn('h-1 w-full', accent)} />
-      <div className="p-5">
+      <div className="p-3 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <p className="text-sm font-medium text-muted-foreground leading-tight">{title}</p>
           <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', iconBg)}>
@@ -46,7 +46,7 @@ export function StatCard({
           </div>
         </div>
         <div className="mt-3">
-          <p className="text-3xl font-bold tracking-tight">{value}</p>
+          <p className="text-xl font-bold tracking-tight sm:text-3xl">{value}</p>
           {(subtitle || trend) && (
             <p className="mt-1 text-xs text-muted-foreground">
               {trend && <span className="text-emerald-600">{trend}</span>}
