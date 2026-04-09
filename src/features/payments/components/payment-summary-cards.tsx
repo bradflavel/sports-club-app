@@ -11,30 +11,34 @@ interface PaymentSummaryCardsProps {
 
 export function PaymentSummaryCards({ summary }: PaymentSummaryCardsProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatCard
         title="Total Outstanding"
         value={formatCurrency(summary.totalOutstanding * 100)}
-        subtitle="Pending and overdue balances"
+        subtitle="Pending and overdue"
         icon={DollarSign}
+        color="rose"
       />
       <StatCard
         title="Collected This Month"
         value={formatCurrency(summary.collectedThisMonth * 100)}
-        subtitle="Payments received this month"
+        subtitle="Received this month"
         icon={TrendingUp}
+        color="emerald"
       />
       <StatCard
-        title="Overdue Payments"
+        title="Overdue"
         value={summary.overdueCount}
-        subtitle="Payments past their due date"
+        subtitle="Past due date"
         icon={AlertTriangle}
+        color="amber"
       />
       <StatCard
         title="Members with Balance"
         value={summary.membersWithBalance}
-        subtitle="Members with outstanding amounts"
+        subtitle="Outstanding amounts"
         icon={Users}
+        color="blue"
       />
     </div>
   );

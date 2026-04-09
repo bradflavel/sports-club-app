@@ -24,7 +24,7 @@ export function RecentAnnouncementsWidget({
   loading = false,
 }: RecentAnnouncementsWidgetProps) {
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
+    <div className="rounded-xl border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h3 className="font-semibold">Recent Announcements</h3>
         <Link

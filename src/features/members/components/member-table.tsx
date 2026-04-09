@@ -1,6 +1,7 @@
 'use client';
 
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, type VisibilityState } from '@tanstack/react-table';
+import { useLayoutEffect, useState } from 'react';
 import Link from 'next/link';
 import { MoreHorizontal, ArrowUpDown } from 'lucide-react';
 import { DataTable } from '@/components/shared/data-table';
@@ -23,6 +24,7 @@ interface MemberTableProps {
   members: MemberWithProfile[];
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: MembershipStatus) => void;
+  toolbar?: React.ReactNode;
 }
 
 
@@ -96,12 +98,13 @@ function createColumns(
     {
       id: 'name',
       size: 200,
+      enableHiding: false,
       accessorFn: (row) => `${row.profile.first_name} ${row.profile.last_name}`,
       header: ({ column }) => (
         <Button
           variant="ghost"
           size="sm"
-          className="-ml-3 h-8"
+          className="ml-8 h-8"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
           Name
@@ -109,7 +112,7 @@ function createColumns(
         </Button>
       ),
       cell: ({ row }) => (
-        <Link href={`/members/${row.original.id}`} className="hover:underline">
+        <Link href={`/members/${row.original.id}`} className="block hover:underline">
           <AvatarWithName
             firstName={row.original.profile.first_name}
             lastName={row.original.profile.last_name}
@@ -224,6 +227,7 @@ function createColumns(
     {
       id: 'actions',
       size: 50,
+      enableHiding: false,
       header: '',
       cell: ({ row }) => {
         const member = row.original;
@@ -274,8 +278,29 @@ function createColumns(
   ];
 }
 
-export function MemberTable({ members, onDelete, onStatusChange }: MemberTableProps) {
+export function MemberTable({ members, onDelete, onStatusChange, toolbar }: MemberTableProps) {
   const columns = createColumns(onDelete, onStatusChange);
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    select: false,
+    age: false,
+    membershipType: false,
+    email: false,
+    phone: false,
+    joinedDate: false,
+  });
+
+  useLayoutEffect(() => {
+    const w = window.innerWidth;
+    setColumnVisibility({
+      select: w >= 640,
+      age: w >= 640,
+      membershipType: w >= 640,
+      email: w >= 768,
+      phone: w >= 768,
+      joinedDate: w >= 1024,
+    });
+  }, []);
 
   return (
     <DataTable
@@ -283,6 +308,9 @@ export function MemberTable({ members, onDelete, onStatusChange }: MemberTablePr
       data={members}
       enableRowSelection
       pageSize={20}
+      toolbar={toolbar}
+      columnVisibility={columnVisibility}
+      onColumnVisibilityChange={setColumnVisibility}
     />
   );
 }

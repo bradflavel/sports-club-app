@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin, Calendar, ArrowRight } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ActivityEventWithTeams } from '@/lib/supabase/database.types';
 import type { SportType } from '@/lib/constants';
@@ -49,7 +49,7 @@ export function UpcomingEventsWidget({ events, loading = false, sportType }: Upc
   const heading = `Upcoming ${matchLabel}s`;
 
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
+    <div className="rounded-xl border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h3 className="font-semibold">{heading}</h3>
         <Link
@@ -70,7 +70,10 @@ export function UpcomingEventsWidget({ events, loading = false, sportType }: Upc
             </div>
           ))
         ) : events.length === 0 ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">No upcoming events.</p>
+          <div className="flex flex-col items-center gap-2 p-6 text-center text-muted-foreground">
+            <CalendarDays className="h-8 w-8 opacity-40" />
+            <p className="text-sm">No upcoming events.</p>
+          </div>
         ) : (
           events.slice(0, 5).map((event) => (
             <div key={event.id} className="p-4">

@@ -15,7 +15,13 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, SlidersHorizontal } from 'lucide-react';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -24,6 +30,9 @@ interface DataTableProps<TData, TValue> {
   pageSize?: number;
   enableRowSelection?: boolean;
   onRowSelectionChange?: (rows: TData[]) => void;
+  toolbar?: React.ReactNode;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: (visibility: VisibilityState) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -33,11 +42,26 @@ export function DataTable<TData, TValue>({
   pageSize = 20,
   enableRowSelection = false,
   onRowSelectionChange,
+  toolbar,
+  columnVisibility: controlledVisibility,
+  onColumnVisibilityChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [internalVisibility, setInternalVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
+
+  const isControlled = controlledVisibility !== undefined;
+  const columnVisibility = isControlled ? controlledVisibility : internalVisibility;
+
+  const handleVisibilityChange = (updater: VisibilityState | ((prev: VisibilityState) => VisibilityState)) => {
+    const next = typeof updater === 'function' ? updater(columnVisibility) : updater;
+    if (isControlled) {
+      onColumnVisibilityChange?.(next);
+    } else {
+      setInternalVisibility(next);
+    }
+  };
 
   const table = useReactTable({
     data,
@@ -52,7 +76,7 @@ export function DataTable<TData, TValue>({
     enableRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: handleVisibilityChange,
     onRowSelectionChange: (updater) => {
       const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
       setRowSelection(newSelection);
@@ -66,7 +90,6 @@ export function DataTable<TData, TValue>({
     },
   });
 
-  // Notify parent of selection changes using TanStack's row model
   const onRowSelectionChangeRef = useRef(onRowSelectionChange);
   onRowSelectionChangeRef.current = onRowSelectionChange;
 
@@ -77,17 +100,54 @@ export function DataTable<TData, TValue>({
     }
   }, [rowSelection, table]);
 
+  const hideableColumns = table.getAllColumns().filter((col) => col.getCanHide());
+
+  function getColumnLabel(columnId: string, header: unknown): string {
+    if (typeof header === 'string' && header) return header;
+    return columnId.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
+  }
+
+  const columnToggle = hideableColumns.length > 0 ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5">
+          <SlidersHorizontal className="h-4 w-4" />
+          <span className="hidden sm:inline">Columns</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        {hideableColumns.map((col) => (
+          <DropdownMenuCheckboxItem
+            key={col.id}
+            checked={col.getIsVisible()}
+            onCheckedChange={(val) => col.toggleVisibility(!!val)}
+          >
+            {getColumnLabel(col.id, col.columnDef.header)}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
+    <div className="space-y-2">
+      {(toolbar || columnToggle) && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1">{toolbar}</div>
+          {columnToggle}
+        </div>
+      )}
+
+      {/* Table: max-h constrains height; thead is sticky within; only tbody rows scroll */}
+      <div className="max-h-[calc(100dvh-22rem)] overflow-auto rounded-md border lg:max-h-[calc(100dvh-17rem)]">
         <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'fixed' }}>
-          <thead className="border-b bg-muted/50">
+          <thead className="sticky top-0 z-10 border-b bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="h-12 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden"
+                    className={`h-10 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden`}
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder
@@ -107,7 +167,10 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="p-4 align-middle overflow-hidden text-ellipsis">
+                    <td
+                      key={cell.id}
+                      className={`px-4 py-1.5 align-middle overflow-hidden text-ellipsis${(cell.column.columnDef.meta as { className?: string })?.className ? ` ${(cell.column.columnDef.meta as { className?: string }).className}` : ''}`}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -124,75 +187,66 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {enableRowSelection && (
-            <span>
-              {table.getFilteredSelectedRowModel().rows.length} of{' '}
-              {table.getFilteredRowModel().rows.length} row(s) selected
-            </span>
-          )}
-          <span>
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </span>
-        </div>
+      {/* Pagination: normal flow below the capped table, never overlapped by data */}
+      <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+        <span className="shrink-0 text-sm text-muted-foreground">
+          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+        </span>
 
-        <div className="flex items-center gap-2">
-          <Select
-            value={String(table.getState().pagination.pageSize)}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
           >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[10, 20, 30, 50].map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
         </div>
+
+        <Select
+          value={String(table.getState().pagination.pageSize)}
+          onValueChange={(value) => table.setPageSize(Number(value))}
+        >
+          <SelectTrigger className="h-8 w-[70px] shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[10, 20, 30, 50].map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

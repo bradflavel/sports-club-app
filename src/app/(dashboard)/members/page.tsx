@@ -245,7 +245,7 @@ export default function MembersPage() {
           </Badge>
         }
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleExportCsv} className="gap-2">
               <Download className="h-4 w-4" />
               Export CSV
@@ -266,15 +266,6 @@ export default function MembersPage() {
         }
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <SearchInput
-          placeholder="Search members..."
-          onSearch={setSearch}
-          className="w-full sm:max-w-xs"
-        />
-        <MemberFilters filters={filters} onFiltersChange={setFilters} membershipTypes={membershipTypes} />
-      </div>
-
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -282,24 +273,48 @@ export default function MembersPage() {
           ))}
         </div>
       ) : members.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="No members found"
-          description={
-            search || Object.values(filters).some(Boolean)
-              ? 'Try adjusting your search or filters.'
-              : 'Get started by adding your first member.'
-          }
-          actionLabel={
-            search || Object.values(filters).some(Boolean) ? undefined : 'Add Member'
-          }
-          actionHref="/members/new"
-        />
+        <>
+          <div className="flex items-center gap-2">
+            <SearchInput
+              placeholder="Search members..."
+              onSearch={setSearch}
+              className="flex-1 sm:max-w-xs"
+            />
+            <div className="hidden sm:block">
+              <MemberFilters filters={filters} onFiltersChange={setFilters} membershipTypes={membershipTypes} />
+            </div>
+          </div>
+          <EmptyState
+            icon={Users}
+            title="No members found"
+            description={
+              search || Object.values(filters).some(Boolean)
+                ? 'Try adjusting your search or filters.'
+                : 'Get started by adding your first member.'
+            }
+            actionLabel={
+              search || Object.values(filters).some(Boolean) ? undefined : 'Add Member'
+            }
+            actionHref="/members/new"
+          />
+        </>
       ) : (
         <MemberTable
           members={members}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
+          toolbar={
+            <div className="flex items-center gap-2">
+              <SearchInput
+                placeholder="Search members..."
+                onSearch={setSearch}
+                className="flex-1 sm:max-w-xs"
+              />
+              <div className="hidden sm:block">
+                <MemberFilters filters={filters} onFiltersChange={setFilters} membershipTypes={membershipTypes} />
+              </div>
+            </div>
+          }
         />
       )}
     </div>
