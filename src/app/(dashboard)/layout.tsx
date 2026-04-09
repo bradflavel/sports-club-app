@@ -25,6 +25,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
           orgName={organisation?.name}
+          orgLogo={organisation?.logo_url}
           userFirstName={profile?.first_name}
           userLastName={profile?.last_name}
           userAvatar={profile?.avatar_url}
