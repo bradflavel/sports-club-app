@@ -75,7 +75,6 @@ function createColumns(
     {
       id: 'select',
       size: 40,
-      meta: { className: 'hidden sm:table-cell' },
       header: ({ table }) => (
         <Checkbox
           checked={
@@ -283,6 +282,7 @@ export function MemberTable({ members, onDelete, onStatusChange, toolbar }: Memb
   const columns = createColumns(onDelete, onStatusChange);
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    select: false,
     age: false,
     membershipType: false,
     email: false,
@@ -293,6 +293,7 @@ export function MemberTable({ members, onDelete, onStatusChange, toolbar }: Memb
   useLayoutEffect(() => {
     const w = window.innerWidth;
     setColumnVisibility({
+      select: w >= 640,
       age: w >= 640,
       membershipType: w >= 640,
       email: w >= 768,
