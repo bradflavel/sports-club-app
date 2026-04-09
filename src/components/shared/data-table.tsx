@@ -31,6 +31,8 @@ interface DataTableProps<TData, TValue> {
   enableRowSelection?: boolean;
   onRowSelectionChange?: (rows: TData[]) => void;
   toolbar?: React.ReactNode;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: (visibility: VisibilityState) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,11 +43,25 @@ export function DataTable<TData, TValue>({
   enableRowSelection = false,
   onRowSelectionChange,
   toolbar,
+  columnVisibility: controlledVisibility,
+  onColumnVisibilityChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [internalVisibility, setInternalVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
+
+  const isControlled = controlledVisibility !== undefined;
+  const columnVisibility = isControlled ? controlledVisibility : internalVisibility;
+
+  const handleVisibilityChange = (updater: VisibilityState | ((prev: VisibilityState) => VisibilityState)) => {
+    const next = typeof updater === 'function' ? updater(columnVisibility) : updater;
+    if (isControlled) {
+      onColumnVisibilityChange?.(next);
+    } else {
+      setInternalVisibility(next);
+    }
+  };
 
   const table = useReactTable({
     data,
@@ -60,7 +76,7 @@ export function DataTable<TData, TValue>({
     enableRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: handleVisibilityChange,
     onRowSelectionChange: (updater) => {
       const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
       setRowSelection(newSelection);
@@ -74,7 +90,6 @@ export function DataTable<TData, TValue>({
     },
   });
 
-  // Notify parent of selection changes using TanStack's row model
   const onRowSelectionChangeRef = useRef(onRowSelectionChange);
   onRowSelectionChangeRef.current = onRowSelectionChange;
 
@@ -122,15 +137,17 @@ export function DataTable<TData, TValue>({
           {columnToggle}
         </div>
       )}
-      <div className="overflow-x-auto rounded-md border">
+
+      {/* Table: max-h constrains height; thead is sticky within; only tbody rows scroll */}
+      <div className="max-h-[calc(100dvh-22rem)] overflow-auto rounded-md border lg:max-h-[calc(100dvh-17rem)]">
         <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'fixed' }}>
-          <thead className="border-b bg-muted/50">
+          <thead className="sticky top-0 z-10 border-b bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className={`h-10 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden${(header.column.columnDef.meta as { className?: string })?.className ? ` ${(header.column.columnDef.meta as { className?: string }).className}` : ''}`}
+                    className={`h-10 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden`}
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder
@@ -150,7 +167,10 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={`px-4 py-1.5 align-middle overflow-hidden text-ellipsis${(cell.column.columnDef.meta as { className?: string })?.className ? ` ${(cell.column.columnDef.meta as { className?: string }).className}` : ''}`}>
+                    <td
+                      key={cell.id}
+                      className={`px-4 py-1.5 align-middle overflow-hidden text-ellipsis${(cell.column.columnDef.meta as { className?: string })?.className ? ` ${(cell.column.columnDef.meta as { className?: string }).className}` : ''}`}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -167,7 +187,8 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      <div className="sticky bottom-0 z-10 flex items-center justify-between border-t bg-background px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+      {/* Pagination: normal flow below the capped table, never overlapped by data */}
+      <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
         <span className="shrink-0 text-sm text-muted-foreground">
           {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
         </span>

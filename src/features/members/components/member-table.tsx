@@ -1,6 +1,7 @@
 'use client';
 
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, type VisibilityState } from '@tanstack/react-table';
+import { useLayoutEffect, useState } from 'react';
 import Link from 'next/link';
 import { MoreHorizontal, ArrowUpDown } from 'lucide-react';
 import { DataTable } from '@/components/shared/data-table';
@@ -126,7 +127,6 @@ function createColumns(
     {
       id: 'age',
       size: 80,
-      meta: { className: 'hidden sm:table-cell' },
       accessorFn: (row) => row.profile.date_of_birth,
       header: 'Age',
       cell: ({ row }) => {
@@ -158,7 +158,6 @@ function createColumns(
     {
       id: 'email',
       size: 220,
-      meta: { className: 'hidden md:table-cell' },
       accessorFn: (row) => row.profile.email,
       header: 'Email',
       cell: ({ getValue }) => (
@@ -168,7 +167,6 @@ function createColumns(
     {
       id: 'phone',
       size: 130,
-      meta: { className: 'hidden md:table-cell' },
       accessorFn: (row) => row.profile.phone,
       header: 'Phone',
       cell: ({ getValue }) => (
@@ -178,7 +176,6 @@ function createColumns(
     {
       id: 'membershipType',
       size: 100,
-      meta: { className: 'hidden sm:table-cell' },
       accessorKey: 'membership_type',
       header: 'Type',
       cell: ({ row }) => (
@@ -209,7 +206,6 @@ function createColumns(
     {
       id: 'joinedDate',
       size: 120,
-      meta: { className: 'hidden lg:table-cell' },
       accessorKey: 'registration_date',
       header: ({ column }) => (
         <Button
@@ -286,6 +282,25 @@ function createColumns(
 export function MemberTable({ members, onDelete, onStatusChange, toolbar }: MemberTableProps) {
   const columns = createColumns(onDelete, onStatusChange);
 
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    age: false,
+    membershipType: false,
+    email: false,
+    phone: false,
+    joinedDate: false,
+  });
+
+  useLayoutEffect(() => {
+    const w = window.innerWidth;
+    setColumnVisibility({
+      age: w >= 640,
+      membershipType: w >= 640,
+      email: w >= 768,
+      phone: w >= 768,
+      joinedDate: w >= 1024,
+    });
+  }, []);
+
   return (
     <DataTable
       columns={columns}
@@ -293,6 +308,8 @@ export function MemberTable({ members, onDelete, onStatusChange, toolbar }: Memb
       enableRowSelection
       pageSize={20}
       toolbar={toolbar}
+      columnVisibility={columnVisibility}
+      onColumnVisibilityChange={setColumnVisibility}
     />
   );
 }
