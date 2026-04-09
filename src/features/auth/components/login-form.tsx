@@ -52,7 +52,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-6 shadow-sm">
+    <div className="rounded-lg border bg-card p-4 shadow-sm sm:p-6">
       <div className="mb-6 text-center">
         <h1 className="text-2xl font-bold">Welcome back</h1>
         <p className="mt-1 text-sm text-muted-foreground">Sign in to your account</p>
@@ -61,18 +61,18 @@ export function LoginForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="you@example.com" {...register('email')} />
+          <Input id="email" type="email" placeholder="you@example.com" className="text-base sm:text-sm" {...register('email')} />
           {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
-            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+            <Link href="/forgot-password" className="py-1 text-sm text-primary hover:underline">
               Forgot password?
             </Link>
           </div>
-          <Input id="password" type="password" {...register('password')} />
+          <Input id="password" type="password" className="text-base sm:text-sm" {...register('password')} />
           {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         </div>
 
