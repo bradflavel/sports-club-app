@@ -87,7 +87,7 @@ export function DataTable<TData, TValue>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className={`h-12 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden${(header.column.columnDef.meta as { className?: string })?.className ? ` ${(header.column.columnDef.meta as { className?: string }).className}` : ''}`}
+                    className={`h-10 px-4 text-left align-middle font-medium text-muted-foreground overflow-hidden${(header.column.columnDef.meta as { className?: string })?.className ? ` ${(header.column.columnDef.meta as { className?: string }).className}` : ''}`}
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder
@@ -107,7 +107,7 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={`p-4 align-middle overflow-hidden text-ellipsis${(cell.column.columnDef.meta as { className?: string })?.className ? ` ${(cell.column.columnDef.meta as { className?: string }).className}` : ''}`}>
+                    <td key={cell.id} className={`px-4 py-2 align-middle overflow-hidden text-ellipsis${(cell.column.columnDef.meta as { className?: string })?.className ? ` ${(cell.column.columnDef.meta as { className?: string }).className}` : ''}`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -124,7 +124,7 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      <div className="flex flex-col gap-2 px-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t bg-background px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {enableRowSelection && (
             <span>
