@@ -113,7 +113,7 @@ function createColumns(
         </Button>
       ),
       cell: ({ row }) => (
-        <Link href={`/members/${row.original.id}`} className="hover:underline">
+        <Link href={`/members/${row.original.id}`} className="block hover:underline">
           <AvatarWithName
             firstName={row.original.profile.first_name}
             lastName={row.original.profile.last_name}

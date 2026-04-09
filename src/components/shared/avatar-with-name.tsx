@@ -26,16 +26,16 @@ export function AvatarWithName({
   size = 'md',
 }: AvatarWithNameProps) {
   return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <Avatar className={sizeClasses[size]}>
+    <div className={cn('flex min-w-0 items-center gap-3', className)}>
+      <Avatar className={cn('shrink-0', sizeClasses[size])}>
         <AvatarImage src={avatarUrl || undefined} alt={`${firstName} ${lastName}`} />
         <AvatarFallback className="text-xs">{getInitials(firstName, lastName)}</AvatarFallback>
       </Avatar>
-      <div>
-        <p className="text-sm font-medium leading-none">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium leading-none">
           {firstName} {lastName}
         </p>
-        {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
+        {subtitle && <p className="mt-1 truncate text-xs text-muted-foreground">{subtitle}</p>}
       </div>
     </div>
   );
