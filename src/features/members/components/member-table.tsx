@@ -23,6 +23,7 @@ interface MemberTableProps {
   members: MemberWithProfile[];
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: MembershipStatus) => void;
+  toolbar?: React.ReactNode;
 }
 
 
@@ -282,7 +283,7 @@ function createColumns(
   ];
 }
 
-export function MemberTable({ members, onDelete, onStatusChange }: MemberTableProps) {
+export function MemberTable({ members, onDelete, onStatusChange, toolbar }: MemberTableProps) {
   const columns = createColumns(onDelete, onStatusChange);
 
   return (
@@ -291,6 +292,7 @@ export function MemberTable({ members, onDelete, onStatusChange }: MemberTablePr
       data={members}
       enableRowSelection
       pageSize={20}
+      toolbar={toolbar}
     />
   );
 }

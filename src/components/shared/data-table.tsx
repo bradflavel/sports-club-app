@@ -30,6 +30,7 @@ interface DataTableProps<TData, TValue> {
   pageSize?: number;
   enableRowSelection?: boolean;
   onRowSelectionChange?: (rows: TData[]) => void;
+  toolbar?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -39,6 +40,7 @@ export function DataTable<TData, TValue>({
   pageSize = 20,
   enableRowSelection = false,
   onRowSelectionChange,
+  toolbar,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -90,29 +92,34 @@ export function DataTable<TData, TValue>({
     return columnId.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
   }
 
+  const columnToggle = hideableColumns.length > 0 ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5">
+          <SlidersHorizontal className="h-4 w-4" />
+          <span className="hidden sm:inline">Columns</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        {hideableColumns.map((col) => (
+          <DropdownMenuCheckboxItem
+            key={col.id}
+            checked={col.getIsVisible()}
+            onCheckedChange={(val) => col.toggleVisibility(!!val)}
+          >
+            {getColumnLabel(col.id, col.columnDef.header)}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
   return (
     <div className="space-y-2">
-      {hideableColumns.length > 0 && (
-        <div className="flex justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span className="hidden sm:inline">Columns</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {hideableColumns.map((col) => (
-                <DropdownMenuCheckboxItem
-                  key={col.id}
-                  checked={col.getIsVisible()}
-                  onCheckedChange={(val) => col.toggleVisibility(!!val)}
-                >
-                  {getColumnLabel(col.id, col.columnDef.header)}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+      {(toolbar || columnToggle) && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1">{toolbar}</div>
+          {columnToggle}
         </div>
       )}
       <div className="overflow-x-auto rounded-md border">
@@ -160,75 +167,65 @@ export function DataTable<TData, TValue>({
         </table>
       </div>
 
-      <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t bg-background px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {enableRowSelection && (
-            <span>
-              {table.getFilteredSelectedRowModel().rows.length} of{' '}
-              {table.getFilteredRowModel().rows.length} row(s) selected
-            </span>
-          )}
-          <span>
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </span>
-        </div>
+      <div className="sticky bottom-0 z-10 flex items-center justify-between border-t bg-background px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+        <span className="shrink-0 text-sm text-muted-foreground">
+          {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+        </span>
 
-        <div className="flex items-center gap-2">
-          <Select
-            value={String(table.getState().pagination.pageSize)}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
           >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[10, 20, 30, 50].map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
         </div>
+
+        <Select
+          value={String(table.getState().pagination.pageSize)}
+          onValueChange={(value) => table.setPageSize(Number(value))}
+        >
+          <SelectTrigger className="h-8 w-[70px] shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[10, 20, 30, 50].map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
