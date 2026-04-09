@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CreditCard, Plus, CheckCircle } from 'lucide-react';
+import { CreditCard, Plus, CheckCircle, DollarSign, Calendar } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { EmptyState } from '@/components/shared/empty-state';
 import { PageSkeleton } from '@/components/shared/loading-skeleton';
 import { StatCard } from '@/components/shared/stat-card';
+import { SearchInput } from '@/components/shared/search-input';
 import { Button } from '@/components/ui/button';
 import { PaymentTable } from '@/features/payments/components/payment-table';
 import { PaymentSummaryCards } from '@/features/payments/components/payment-summary-cards';
@@ -16,7 +17,6 @@ import { useAuth } from '@/hooks/use-auth-context';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/lib/format';
-import { DollarSign, Calendar } from 'lucide-react';
 import type { PaymentWithMember, PaymentFilters as PaymentFiltersType } from '@/features/payments/types/payment-types';
 import type { PaymentSummaryResult } from '@/features/payments/services/payment-service';
 import type { MemberWithProfile } from '@/features/members/types/member-types';
@@ -34,6 +34,7 @@ export default function PaymentsPage() {
   const [filters, setFilters] = useState<PaymentFiltersType>({});
   const [selectedRows, setSelectedRows] = useState<PaymentWithMember[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [search, setSearch] = useState('');
 
   const isAdminOrManager = profile?.role === 'admin' || profile?.role === 'manager';
   const [isGuardian, setIsGuardian] = useState(false);
@@ -279,7 +280,7 @@ export default function PaymentsPage() {
       {isAdminOrManager && summary ? (
         <PaymentSummaryCards summary={summary} />
       ) : !isAdminOrManager ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {isGuardian && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
               <p className="text-sm font-medium text-blue-800">
@@ -287,27 +288,24 @@ export default function PaymentsPage() {
               </p>
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard
               title="Total Owed"
               value={formatCurrency(totalOwed)}
-              subtitle={isGuardian ? 'Combined outstanding balance' : 'Outstanding balance'}
+              subtitle={isGuardian ? 'Combined balance' : 'Outstanding balance'}
               icon={DollarSign}
+              color="rose"
             />
             <StatCard
-              title="Next Payment Due"
+              title="Next Due"
               value={nextDue?.due_date ? formatDate(nextDue.due_date) : 'None'}
-              subtitle={nextDue ? nextDue.description ?? undefined : 'No upcoming payments'}
+              subtitle={nextDue ? (nextDue.description ?? 'Upcoming payment') : 'No upcoming payments'}
               icon={Calendar}
+              color="amber"
             />
           </div>
         </div>
       ) : null}
-
-      {/* Filters (admin/manager only) */}
-      {isAdminOrManager && (
-        <PaymentFilters filters={filters} onFiltersChange={setFilters} members={members} />
-      )}
 
       {/* Bulk action bar */}
       {isAdminOrManager && selectedRows.length > 0 && (
@@ -335,19 +333,28 @@ export default function PaymentsPage() {
           ))}
         </div>
       ) : payments.length === 0 ? (
-        <EmptyState
-          icon={CreditCard}
-          title="No payments found"
-          description={
-            Object.values(filters).some(Boolean)
-              ? 'Try adjusting your filters.'
-              : isAdminOrManager
-              ? 'Create your first invoice to get started.'
-              : 'You have no payment history yet.'
-          }
-          actionLabel={isAdminOrManager ? 'Create Invoice' : undefined}
-          actionHref={isAdminOrManager ? '/payments/new' : undefined}
-        />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              placeholder="Search payments..."
+              onSearch={setSearch}
+              className="max-w-xs"
+            />
+          </div>
+          <EmptyState
+            icon={CreditCard}
+            title="No payments found"
+            description={
+              Object.values(filters).some(Boolean)
+                ? 'Try adjusting your filters.'
+                : isAdminOrManager
+                ? 'Create your first invoice to get started.'
+                : 'You have no payment history yet.'
+            }
+            actionLabel={isAdminOrManager ? 'Create Invoice' : undefined}
+            actionHref={isAdminOrManager ? '/payments/new' : undefined}
+          />
+        </div>
       ) : (
         <PaymentTable
           payments={payments}
@@ -356,6 +363,21 @@ export default function PaymentsPage() {
           onDelete={handleDelete}
           onRowSelectionChange={isAdminOrManager ? setSelectedRows : undefined}
           role={profile?.role}
+          searchValue={search}
+          toolbar={
+            <div className="flex flex-1 items-center gap-2">
+              <SearchInput
+                placeholder="Search payments..."
+                onSearch={setSearch}
+                className="max-w-xs"
+              />
+              {isAdminOrManager && (
+                <div className="hidden sm:block">
+                  <PaymentFilters filters={filters} onFiltersChange={setFilters} members={members} />
+                </div>
+              )}
+            </div>
+          }
         />
       )}
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, type VisibilityState } from '@tanstack/react-table';
+import { useLayoutEffect, useState } from 'react';
 import { MoreHorizontal, ArrowUpDown, CheckCircle, RefreshCw, Pencil, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/shared/data-table';
 import { AvatarWithName } from '@/components/shared/avatar-with-name';
@@ -27,6 +28,8 @@ interface PaymentTableProps {
   onDelete: (id: string) => void;
   onRowSelectionChange?: (rows: PaymentWithMember[]) => void;
   role?: UserRole;
+  toolbar?: React.ReactNode;
+  searchValue?: string;
 }
 
 function getPaymentTypeLabel(type: string): string {
@@ -44,6 +47,9 @@ function createColumns(
   const cols: ColumnDef<PaymentWithMember>[] = [
     {
       id: 'select',
+      size: 40,
+      enableSorting: false,
+      enableHiding: false,
       header: ({ table }) => (
         <Checkbox
           checked={
@@ -61,14 +67,14 @@ function createColumns(
           aria-label="Select row"
         />
       ),
-      enableSorting: false,
-      enableHiding: false,
     },
     {
       id: 'member',
+      size: 180,
+      enableHiding: false,
       accessorFn: (row) =>
         `${row.member.profile.first_name} ${row.member.profile.last_name}`,
-      header: 'Member',
+      header: () => <span className="pl-11 text-xs font-medium text-muted-foreground">Member</span>,
       cell: ({ row }) => (
         <AvatarWithName
           firstName={row.original.member.profile.first_name}
@@ -80,14 +86,17 @@ function createColumns(
     },
     {
       id: 'description',
+      size: 180,
       accessorKey: 'description',
       header: 'Description',
       cell: ({ getValue }) => (
-        <span className="max-w-[200px] truncate text-sm">{getValue() as string}</span>
+        <span className="truncate text-sm">{getValue() as string}</span>
       ),
     },
     {
       id: 'amount',
+      size: 100,
+      enableHiding: false,
       accessorKey: 'amount_cents',
       header: ({ column }) => (
         <Button
@@ -107,6 +116,7 @@ function createColumns(
     },
     {
       id: 'paymentType',
+      size: 120,
       accessorKey: 'payment_type',
       header: 'Type',
       cell: ({ row }) => (
@@ -115,6 +125,8 @@ function createColumns(
     },
     {
       id: 'status',
+      size: 110,
+      enableHiding: false,
       accessorKey: 'payment_status',
       header: ({ column }) => (
         <Button
@@ -132,6 +144,7 @@ function createColumns(
     },
     {
       id: 'dueDate',
+      size: 110,
       accessorKey: 'due_date',
       header: ({ column }) => (
         <Button
@@ -140,7 +153,7 @@ function createColumns(
           className="-ml-3 h-8"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
-          Due Date
+          Due
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
@@ -153,8 +166,9 @@ function createColumns(
     },
     {
       id: 'paidDate',
+      size: 110,
       accessorKey: 'paid_at',
-      header: 'Paid Date',
+      header: 'Paid',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {row.original.paid_at ? formatDate(row.original.paid_at) : '—'}
@@ -166,6 +180,9 @@ function createColumns(
   if (isAdminOrManager) {
     cols.push({
       id: 'actions',
+      size: 50,
+      enableHiding: false,
+      enableSorting: false,
       header: '',
       cell: ({ row }) => {
         const payment = row.original;
@@ -179,19 +196,13 @@ function createColumns(
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {payment.payment_status !== 'paid' && (
-                <DropdownMenuItem
-                  className="gap-2"
-                  onClick={() => onMarkPaid(payment.id)}
-                >
+                <DropdownMenuItem className="gap-2" onClick={() => onMarkPaid(payment.id)}>
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
                   Mark as Paid
                 </DropdownMenuItem>
               )}
               {payment.payment_status === 'paid' && (
-                <DropdownMenuItem
-                  className="gap-2"
-                  onClick={() => onMarkRefunded(payment.id)}
-                >
+                <DropdownMenuItem className="gap-2" onClick={() => onMarkRefunded(payment.id)}>
                   <RefreshCw className="h-4 w-4 text-amber-600" />
                   Mark as Refunded
                 </DropdownMenuItem>
@@ -214,7 +225,6 @@ function createColumns(
           </DropdownMenu>
         );
       },
-      enableSorting: false,
     });
   }
 
@@ -228,16 +238,42 @@ export function PaymentTable({
   onDelete,
   onRowSelectionChange,
   role,
+  toolbar,
+  searchValue,
 }: PaymentTableProps) {
   const columns = createColumns(onMarkPaid, onMarkRefunded, onDelete, role);
+  const isAdminOrManager = role === 'admin' || role === 'manager';
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    select: false,
+    description: false,
+    paymentType: false,
+    dueDate: false,
+    paidDate: false,
+  });
+
+  useLayoutEffect(() => {
+    const w = window.innerWidth;
+    setColumnVisibility({
+      select: w >= 640 && isAdminOrManager,
+      description: w >= 640,
+      paymentType: w >= 640,
+      dueDate: w >= 768,
+      paidDate: w >= 1024,
+    });
+  }, [isAdminOrManager]);
 
   return (
     <DataTable
       columns={columns}
       data={payments}
-      enableRowSelection
+      enableRowSelection={isAdminOrManager}
       onRowSelectionChange={onRowSelectionChange}
       pageSize={20}
+      toolbar={toolbar}
+      columnVisibility={columnVisibility}
+      onColumnVisibilityChange={setColumnVisibility}
+      searchValue={searchValue}
     />
   );
 }
