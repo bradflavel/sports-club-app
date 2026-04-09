@@ -56,7 +56,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost">Sign in</Button>
+              <Button variant="ghost" className="hidden sm:inline-flex">Sign in</Button>
             </Link>
             <Link href="/signup">
               <Button>Get started</Button>
@@ -65,39 +65,39 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex max-w-7xl flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-32 lg:px-8">
-        <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
+      <section className="mx-auto flex max-w-7xl flex-col items-center px-4 py-16 text-center sm:px-6 sm:py-28 lg:px-8 lg:py-32">
+        <h1 className="max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
           Everything your sports club needs,{' '}
           <span className="text-primary">in one place</span>
         </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+        <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
           ClubConnect is the all-in-one platform for managing your sports club. From member
           registrations and payments to competitions and team management — we&apos;ve got you covered.
         </p>
-        <div className="mt-10 flex gap-4">
-          <Link href="/signup">
-            <Button size="lg" className="gap-2">
+        <div className="mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
+          <Link href="/signup" className="w-full sm:w-auto">
+            <Button size="lg" className="w-full gap-2 sm:w-auto">
               Get started free
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href="/login">
-            <Button size="lg" variant="outline">
+          <Link href="/login" className="w-full sm:w-auto">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto">
               Sign in
             </Button>
           </Link>
         </div>
       </section>
 
-      <section className="border-t bg-muted/30 py-20">
+      <section className="border-t bg-muted/30 py-14 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold">Everything you need to run your club</h2>
-            <p className="mt-4 text-lg text-muted-foreground">
+            <h2 className="text-2xl font-bold sm:text-3xl">Everything you need to run your club</h2>
+            <p className="mt-4 text-base text-muted-foreground sm:text-lg">
               Powerful features designed for sports clubs of all sizes
             </p>
           </div>
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-4 sm:mt-16 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
             {features.map((feature) => (
               <div
                 key={feature.title}
