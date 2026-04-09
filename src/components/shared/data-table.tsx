@@ -190,7 +190,7 @@ export function DataTable<TData, TValue>({
       {/* Pagination: normal flow below the capped table, never overlapped by data */}
       <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
         <span className="shrink-0 text-sm text-muted-foreground">
-          {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
         </span>
 
         <div className="flex items-center gap-1">
