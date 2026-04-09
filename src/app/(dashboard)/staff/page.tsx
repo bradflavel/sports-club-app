@@ -83,7 +83,7 @@ export default function StaffPage() {
         description="Manage your club's staff, coaches, volunteers, and committee members"
         actions={
           isAdmin ? (
-            <>
+            <div className="hidden sm:flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => router.push('/staff/types')}>
                 <Settings2 className="mr-2 h-4 w-4" />
                 Types
@@ -100,7 +100,7 @@ export default function StaffPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Staff
               </Button>
-            </>
+            </div>
           ) : null
         }
       />

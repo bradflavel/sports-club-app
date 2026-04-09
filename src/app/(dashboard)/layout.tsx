@@ -25,11 +25,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar
           orgName={organisation?.name}
+          orgLogo={organisation?.logo_url}
           userFirstName={profile?.first_name}
           userLastName={profile?.last_name}
           userAvatar={profile?.avatar_url}
         />
-        <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:p-6 lg:pb-6">
           <Suspense>
             <ErrorBoundary>{children}</ErrorBoundary>
           </Suspense>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Search, Menu } from 'lucide-react';
+import { Search } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -18,18 +19,18 @@ import Link from 'next/link';
 
 interface TopBarProps {
   orgName?: string;
+  orgLogo?: string | null;
   userFirstName?: string;
   userLastName?: string;
   userAvatar?: string | null;
-  onMenuClick?: () => void;
 }
 
 export function TopBar({
   orgName = 'ClubConnect',
+  orgLogo,
   userFirstName = '',
   userLastName = '',
   userAvatar,
-  onMenuClick,
 }: TopBarProps) {
   const router = useRouter();
 
@@ -41,11 +42,21 @@ export function TopBar({
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-4 lg:px-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
-          <Menu className="h-5 w-5" />
-        </Button>
-        <h2 className="text-lg font-semibold">{orgName}</h2>
+      <div className="flex items-center gap-2.5">
+        {orgLogo ? (
+          <Image
+            src={orgLogo}
+            alt={orgName}
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg object-cover shadow-sm"
+          />
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground shadow-sm">
+            {orgName.charAt(0)}
+          </div>
+        )}
+        <span className="font-semibold">{orgName}</span>
       </div>
 
       <div className="flex items-center gap-1">

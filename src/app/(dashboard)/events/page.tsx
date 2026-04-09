@@ -114,12 +114,14 @@ export default function EventsPage() {
         description="Club events, socials, and functions"
         actions={
           isAdmin ? (
-            <Button asChild size="sm" className="gap-2">
-              <Link href="/events/new">
-                <Plus className="h-4 w-4" />
-                Create Event
-              </Link>
-            </Button>
+            <div className="hidden sm:block">
+              <Button asChild size="sm" className="gap-2">
+                <Link href="/events/new">
+                  <Plus className="h-4 w-4" />
+                  Create Event
+                </Link>
+              </Button>
+            </div>
           ) : undefined
         }
       />

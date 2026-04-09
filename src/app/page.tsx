@@ -104,8 +104,8 @@ export default function LandingPage() {
             </a>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/login" className="hidden sm:block">
-              <Button variant="ghost">Sign in</Button>
+            <Link href="/login">
+              <Button variant="ghost" className="hidden sm:inline-flex">Sign in</Button>
             </Link>
             <Link href="/signup">
               <Button className="h-9 px-3 text-sm sm:h-10 sm:px-4">Get started</Button>
