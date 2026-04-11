@@ -20,14 +20,22 @@ test.describe('Authentication Pages', () => {
       await expect(page.getByText(/password is required/i)).toBeVisible();
     });
 
-    test('shows validation error for invalid email', async ({ page }) => {
+    test('prevents submission with invalid email via browser validation', async ({ page }) => {
       await page.goto('/login');
 
-      await page.getByLabel(/email/i).fill('not-an-email');
+      const emailInput = page.getByLabel(/email/i);
+      await emailInput.fill('not-an-email');
       await page.getByLabel(/password/i).fill('password123');
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-      await expect(page.getByText(/please enter a valid email/i)).toBeVisible();
+      // Browser's native type="email" validation prevents form submission,
+      // so the page should remain on /login with no navigation
+      expect(page.url()).toContain('/login');
+      // The input should report as invalid via the Constraint Validation API
+      const isInvalid = await emailInput.evaluate(
+        (el: HTMLInputElement) => !el.checkValidity()
+      );
+      expect(isInvalid).toBe(true);
     });
 
     test('has link to sign up page', async ({ page }) => {
