@@ -12,7 +12,6 @@ import { DiscountCodeInput } from '@/features/shop/components/discount-code-inpu
 import { getCartItems, updateCartQuantity, removeFromCart } from '@/features/shop/services/cart-service';
 import { createOrder } from '@/features/shop/services/order-service';
 import { validateDiscountCode, incrementDiscountUsage } from '@/features/shop/services/discount-service';
-import { createCheckoutSession } from '@/features/shop/services/stripe-service';
 import { useUser } from '@/hooks/use-user';
 import { useOrganisation } from '@/hooks/use-organisation';
 import { useToast } from '@/components/ui/use-toast';
@@ -108,23 +107,30 @@ export default function CartPage() {
       await incrementDiscountUsage(appliedDiscount.id);
     }
 
-    // Attempt Stripe checkout
-    const lineItems = order.items.map((item) => ({
-      name: item.product_name,
-      quantity: item.quantity,
-      priceCents: item.unit_price_cents,
-    }));
+    // Attempt Stripe checkout via API route
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      const data = await res.json();
 
-    const { url, error: stripeError } = await createCheckoutSession(order, lineItems);
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
 
-    if (url) {
-      // Redirect to Stripe
-      window.location.href = url;
-    } else {
-      // Stripe not configured - go to order page
+      // Stripe not configured or club not connected — go to order page
       toast({
         title: 'Order created!',
-        description: `${order.order_number} - ${stripeError || 'Payment integration pending.'}`,
+        description: `${order.order_number} — ${data.error || 'Payment integration pending.'}`,
+      });
+      router.push(`/shop/orders/${order.id}`);
+    } catch {
+      toast({
+        title: 'Order created!',
+        description: `${order.order_number} — Payment processing unavailable.`,
       });
       router.push(`/shop/orders/${order.id}`);
     }
