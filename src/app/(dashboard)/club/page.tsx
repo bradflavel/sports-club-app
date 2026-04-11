@@ -23,6 +23,7 @@ import { ClubMembershipConfig } from '@/features/club-profile/components/club-me
 import { ClubFinancialsForm } from '@/features/club-profile/components/club-financials-form';
 import { ClubLegalForm } from '@/features/club-profile/components/club-legal-form';
 import { ClubReviewReminder } from '@/features/club-profile/components/club-review-reminder';
+import { ClubPaymentsForm } from '@/features/club-profile/components/club-payments-form';
 import { ModuleSettings } from '@/features/activities/components/module-settings';
 import { useEnabledModules } from '@/hooks/use-enabled-modules';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -196,6 +197,7 @@ export default function ClubProfilePage() {
             <TabsTrigger value="affiliations" className="flex-1">Affiliations</TabsTrigger>
             <TabsTrigger value="membership" className="flex-1">Membership</TabsTrigger>
             <TabsTrigger value="financials" className="flex-1">Financials</TabsTrigger>
+            <TabsTrigger value="payments" className="flex-1">Payments</TabsTrigger>
             <TabsTrigger value="legal" className="flex-1">Legal</TabsTrigger>
             <TabsTrigger value="activities" className="flex-1">Activity Types</TabsTrigger>
           </TabsList>
@@ -288,6 +290,12 @@ export default function ClubProfilePage() {
           </TabsContent>
           <TabsContent value="financials" className="mt-8">
             <ClubFinancialsForm organisation={organisation} onSaved={fetchData} />
+          </TabsContent>
+          <TabsContent value="payments" className="mt-8">
+            <ClubPaymentsForm
+              organisation={organisation}
+              stripeStatus={searchParams.get('stripe')}
+            />
           </TabsContent>
           <TabsContent value="legal" className="mt-8">
             <ClubLegalForm organisation={organisation} onSaved={fetchData} />

@@ -95,6 +95,9 @@ export interface Organisation {
   tiktok_url?: string | null;
   // State/Jurisdiction
   state?: string | null;
+  // Stripe Connect
+  stripe_account_id?: string | null;
+  stripe_onboarding_complete?: boolean;
   // Review
   details_reviewed_at?: string | null;
   created_at: string;

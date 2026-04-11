@@ -6,6 +6,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_STORAGE_URL: z.url('NEXT_PUBLIC_SUPABASE_STORAGE_URL must be a valid URL'),
   NEXT_PUBLIC_APP_URL: z.string().optional().default('http://localhost:3000'),
   NEXT_PUBLIC_APP_NAME: z.string().optional().default('ClubConnect'),
+  // Stripe (optional — shop runs in catalogue-only mode without these)
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
 });
 
 function validateEnv() {
@@ -15,6 +19,9 @@ function validateEnv() {
     NEXT_PUBLIC_SUPABASE_STORAGE_URL: process.env.NEXT_PUBLIC_SUPABASE_STORAGE_URL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   });
 
   if (!result.success) {
