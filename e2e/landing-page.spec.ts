@@ -27,7 +27,9 @@ test.describe('Landing Page', () => {
     }
   });
 
-  test('header contains sign in and get started links', async ({ page }) => {
+  test('header contains sign in and get started links on desktop', async ({ page, isMobile }) => {
+    test.skip(!!isMobile, 'Header sign-in link is hidden on mobile');
+
     await page.goto('/');
 
     const header = page.locator('header');

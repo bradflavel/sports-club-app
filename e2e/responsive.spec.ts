@@ -50,7 +50,7 @@ test.describe('Responsive Design', () => {
       await emailInput.fill('test@example.com');
       await passwordInput.fill('password123');
 
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
     });
 
     test('signup form is usable on mobile', async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe('Responsive Design', () => {
       await expect(page.getByLabel(/first name/i)).toBeVisible();
       await expect(page.getByLabel(/last name/i)).toBeVisible();
       await expect(page.getByLabel(/email/i)).toBeVisible();
-      await expect(page.getByLabel('Password')).toBeVisible();
+      await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
       await expect(page.getByLabel(/confirm password/i)).toBeVisible();
     });
   });

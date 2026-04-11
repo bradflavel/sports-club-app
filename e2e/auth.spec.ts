@@ -8,13 +8,13 @@ test.describe('Authentication Pages', () => {
       await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible();
       await expect(page.getByLabel(/email/i)).toBeVisible();
       await expect(page.getByLabel(/password/i)).toBeVisible();
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
     });
 
     test('shows validation errors for empty submission', async ({ page }) => {
       await page.goto('/login');
 
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
       await expect(page.getByText(/please enter a valid email/i)).toBeVisible();
       await expect(page.getByText(/password is required/i)).toBeVisible();
@@ -25,7 +25,7 @@ test.describe('Authentication Pages', () => {
 
       await page.getByLabel(/email/i).fill('not-an-email');
       await page.getByLabel(/password/i).fill('password123');
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
       await expect(page.getByText(/please enter a valid email/i)).toBeVisible();
     });
@@ -62,10 +62,10 @@ test.describe('Authentication Pages', () => {
         });
       });
 
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
       // Button should be disabled while loading
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeDisabled();
     });
   });
 
@@ -77,7 +77,7 @@ test.describe('Authentication Pages', () => {
       await expect(page.getByLabel(/first name/i)).toBeVisible();
       await expect(page.getByLabel(/last name/i)).toBeVisible();
       await expect(page.getByLabel(/email/i)).toBeVisible();
-      await expect(page.getByLabel('Password')).toBeVisible();
+      await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
       await expect(page.getByLabel(/confirm password/i)).toBeVisible();
       await expect(page.getByRole('button', { name: /create account/i })).toBeVisible();
     });
@@ -97,7 +97,7 @@ test.describe('Authentication Pages', () => {
       await page.getByLabel(/first name/i).fill('Test');
       await page.getByLabel(/last name/i).fill('User');
       await page.getByLabel(/email/i).fill('test@example.com');
-      await page.getByLabel('Password').fill('short');
+      await page.getByLabel('Password', { exact: true }).fill('short');
       await page.getByLabel(/confirm password/i).fill('short');
 
       await page.getByRole('button', { name: /create account/i }).click();
@@ -111,7 +111,7 @@ test.describe('Authentication Pages', () => {
       await page.getByLabel(/first name/i).fill('Test');
       await page.getByLabel(/last name/i).fill('User');
       await page.getByLabel(/email/i).fill('test@example.com');
-      await page.getByLabel('Password').fill('longpassword');
+      await page.getByLabel('Password', { exact: true }).fill('longpassword');
       await page.getByLabel(/confirm password/i).fill('longpassword');
 
       await page.getByRole('button', { name: /create account/i }).click();
@@ -125,7 +125,7 @@ test.describe('Authentication Pages', () => {
       await page.getByLabel(/first name/i).fill('Test');
       await page.getByLabel(/last name/i).fill('User');
       await page.getByLabel(/email/i).fill('test@example.com');
-      await page.getByLabel('Password').fill('password123');
+      await page.getByLabel('Password', { exact: true }).fill('password123');
       await page.getByLabel(/confirm password/i).fill('different123');
 
       await page.getByRole('button', { name: /create account/i }).click();
