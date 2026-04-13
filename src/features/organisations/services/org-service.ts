@@ -63,17 +63,17 @@ export async function createOrganisation(
 
   if (orgError) return { data: null, error: orgError };
 
-  // Set the creating user as admin in their profile
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({
-      organisation_id: (org as Organisation).id,
-      role: 'admin',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
+  // Make the creator an admin of the new org and switch their active context
+  // to it. The trusted RPC inserts the membership row and updates the
+  // profile's denormalised active org/role atomically — and works even when
+  // the user is already a member of other organisations.
+  const { error: assignError } = await supabase.rpc('assign_user_to_organisation', {
+    p_user_id: userId,
+    p_org_id: (org as Organisation).id,
+    p_role: 'admin',
+  });
 
-  if (profileError) return { data: null, error: profileError };
+  if (assignError) return { data: null, error: assignError };
 
   return { data: org as Organisation, error: null };
 }

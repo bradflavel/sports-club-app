@@ -90,10 +90,13 @@ export default function StaffInvitePage() {
         return;
       }
 
-      // Get user's profile
+      // Get user's profile to verify it exists. A user may belong to many
+      // organisations, so we no longer block when their active org differs
+      // from the invite — assign_user_to_organisation upserts the membership
+      // and switches the active context to the inviting club.
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, organisation_id')
+        .select('id')
         .eq('id', user.id)
         .single();
 
@@ -103,16 +106,15 @@ export default function StaffInvitePage() {
         return;
       }
 
-      // If not in org, assign to org
-      if (!profile.organisation_id) {
-        await supabase.rpc('assign_user_to_organisation', {
-          p_user_id: user.id,
-          p_org_id: invite.organisation_id,
-          p_role: 'member',
-        });
-      } else if (profile.organisation_id !== invite.organisation_id) {
+      const { error: assignError } = await supabase.rpc('assign_user_to_organisation', {
+        p_user_id: user.id,
+        p_org_id: invite.organisation_id,
+        p_role: 'member',
+      });
+
+      if (assignError) {
         setState('error');
-        setErrorMessage('You are already a member of a different club. Leave your current club first.');
+        setErrorMessage(assignError.message);
         return;
       }
 

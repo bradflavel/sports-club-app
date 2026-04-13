@@ -14,8 +14,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="fixed inset-0 flex overflow-hidden">
       <Suspense>
         <Sidebar
-          orgName={organisation?.name}
-          orgLogo={organisation?.logo_url}
           userName={profile ? `${profile.first_name} ${profile.last_name}` : ''}
           userAvatar={profile?.avatar_url}
           userFirstName={profile?.first_name}

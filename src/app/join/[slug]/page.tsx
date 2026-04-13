@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,10 @@ import { createClient } from '@/lib/supabase/client';
 import { SPORT_CONFIGS } from '@/lib/constants';
 import type { Organisation } from '@/lib/supabase/database.types';
 
-type JoinState = 'loading' | 'not_found' | 'unauthenticated' | 'already_member' | 'other_org' | 'ready' | 'joining' | 'joined';
+type JoinState = 'loading' | 'not_found' | 'unauthenticated' | 'already_member' | 'ready' | 'joining' | 'joined';
 
 export default function JoinPage() {
   const { slug } = useParams<{ slug: string }>();
-  const router = useRouter();
   const [state, setState] = useState<JoinState>('loading');
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,20 +42,17 @@ export default function JoinPage() {
       return;
     }
 
-    // Check if user already has an org
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organisation_id')
-      .eq('id', user.id)
-      .single();
+    // A user may belong to multiple organisations. Block only if they are
+    // already a member of *this* specific org.
+    const { data: existingMember } = await supabase
+      .from('members')
+      .select('id')
+      .eq('profile_id', user.id)
+      .eq('organisation_id', org.id)
+      .maybeSingle();
 
-    if (profile?.organisation_id === org.id) {
+    if (existingMember) {
       setState('already_member');
-      return;
-    }
-
-    if (profile?.organisation_id) {
-      setState('other_org');
       return;
     }
 
@@ -78,7 +74,9 @@ export default function JoinPage() {
       return;
     }
 
-    // Update profile with org via trusted RPC
+    // The trusted RPC upserts a members row with the requested role and sets
+    // this org as the user's active context — even if they already belong to
+    // other organisations.
     const { error: profileError } = await supabase
       .rpc('assign_user_to_organisation', {
         p_user_id: user.id,
@@ -92,21 +90,23 @@ export default function JoinPage() {
       return;
     }
 
-    // Create member record
-    await supabase.from('members').insert({
-      profile_id: user.id,
-      organisation_id: organisation.id,
-      membership_type: 'senior',
-      membership_status: 'pending',
-      registration_date: new Date().toISOString().split('T')[0],
-      expiry_date: null,
-      medical_conditions: null,
-      dietary_requirements: null,
-      notes: null,
-    });
+    // Fill in the membership details (the RPC only sets profile_id,
+    // organisation_id and role). Upsert so this is idempotent if the row
+    // already exists.
+    await supabase.from('members').upsert(
+      {
+        profile_id: user.id,
+        organisation_id: organisation.id,
+        membership_type: 'senior',
+        membership_status: 'pending',
+        registration_date: new Date().toISOString().split('T')[0],
+      },
+      { onConflict: 'profile_id,organisation_id' }
+    );
 
     setState('joined');
-    setTimeout(() => router.push('/dashboard'), 1500);
+    // Hard reload so the new active org context is reflected everywhere.
+    setTimeout(() => window.location.assign('/dashboard'), 1500);
   }
 
   const sportLabel = organisation
@@ -185,18 +185,6 @@ export default function JoinPage() {
                     You&apos;re already a member of this club.
                   </p>
                   <Button asChild>
-                    <Link href="/dashboard">Go to Dashboard</Link>
-                  </Button>
-                </div>
-              )}
-
-              {state === 'other_org' && (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    You&apos;re currently a member of another club. You&apos;ll need to leave your
-                    current club before joining a new one.
-                  </p>
-                  <Button asChild variant="outline">
                     <Link href="/dashboard">Go to Dashboard</Link>
                   </Button>
                 </div>

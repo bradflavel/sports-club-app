@@ -220,18 +220,18 @@ function StepCreateClub({
         return;
       }
 
-      // Create member record
-      await supabase.from('members').insert({
-        profile_id: user.id,
-        organisation_id: org.id,
-        membership_type: 'senior',
-        membership_status: 'active',
-        registration_date: new Date().toISOString().split('T')[0],
-        expiry_date: null,
-        medical_conditions: null,
-        dietary_requirements: null,
-        notes: null,
-      });
+      // The RPC already created the membership row with role='admin'. Fill
+      // in the membership-detail fields without touching the role.
+      await supabase.from('members').upsert(
+        {
+          profile_id: user.id,
+          organisation_id: org.id,
+          membership_type: 'senior',
+          membership_status: 'active',
+          registration_date: new Date().toISOString().split('T')[0],
+        },
+        { onConflict: 'profile_id,organisation_id' }
+      );
 
       onComplete();
     } catch {
@@ -403,17 +403,16 @@ function StepJoinClub({
         return;
       }
 
-      await supabase.from('members').insert({
-        profile_id: user.id,
-        organisation_id: found.id,
-        membership_type: 'senior',
-        membership_status: 'pending',
-        registration_date: new Date().toISOString().split('T')[0],
-        expiry_date: null,
-        medical_conditions: null,
-        dietary_requirements: null,
-        notes: null,
-      });
+      await supabase.from('members').upsert(
+        {
+          profile_id: user.id,
+          organisation_id: found.id,
+          membership_type: 'senior',
+          membership_status: 'pending',
+          registration_date: new Date().toISOString().split('T')[0],
+        },
+        { onConflict: 'profile_id,organisation_id' }
+      );
 
       onComplete();
     } catch {

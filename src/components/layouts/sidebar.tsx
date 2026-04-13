@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -45,6 +44,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { OrgSwitcher } from './org-switcher';
 
 const MODULE_ICON_MAP: Record<string, LucideIcon> = {
   Trophy,
@@ -82,8 +82,6 @@ const toolsNav: NavItem[] = [
 ];
 
 interface SidebarProps {
-  orgName?: string;
-  orgLogo?: string | null;
   userName?: string;
   userAvatar?: string | null;
   userFirstName?: string;
@@ -91,8 +89,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  orgName = 'ClubConnect',
-  orgLogo,
   userName,
   userAvatar,
   userFirstName = '',
@@ -174,29 +170,13 @@ export function Sidebar({
       <div
         className={cn(
           'flex h-[68px] items-center border-b px-3',
-          collapsed ? 'justify-center cursor-pointer hover:bg-sidebar-accent/50 transition-colors' : 'justify-between'
+          collapsed ? 'justify-center cursor-pointer hover:bg-sidebar-accent/50 transition-colors' : 'justify-between gap-2'
         )}
         onClick={collapsed ? () => setCollapsed(false) : undefined}
         title={collapsed ? 'Expand sidebar' : undefined}
       >
-        <div className={cn('flex items-center min-w-0', collapsed ? 'justify-center' : 'gap-2.5')}>
-          {orgLogo ? (
-            <Image
-              src={orgLogo}
-              alt={orgName}
-              width={36}
-              height={36}
-              className="h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm"
-            />
-          ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground shadow-sm">
-              {orgName.charAt(0)}
-            </div>
-          )}
-          <div className={cn('min-w-0 transition-all duration-300', collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100')}>
-            <p className="truncate text-sm font-semibold leading-tight">{orgName}</p>
-            <p className="truncate text-[11px] text-muted-foreground">Sports Club</p>
-          </div>
+        <div className="min-w-0 flex-1">
+          <OrgSwitcher collapsed={collapsed} />
         </div>
         <Button
           variant="ghost"

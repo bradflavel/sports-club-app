@@ -172,8 +172,19 @@ export interface Member {
   dietary_requirements: string | null;
   membership_type_id?: string | null;
   notes: string | null;
+  role: UserRole;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserOrganisation {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  primary_colour: string | null;
+  role: UserRole;
+  is_active: boolean;
 }
 
 export interface MemberWithProfile extends Member {
@@ -1984,6 +1995,7 @@ export type Database = {
           organisation_id: string
           profile_id: string
           registration_date: string
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
         Insert: {
@@ -1999,6 +2011,7 @@ export type Database = {
           organisation_id: string
           profile_id: string
           registration_date?: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
         Update: {
@@ -2014,6 +2027,7 @@ export type Database = {
           organisation_id?: string
           profile_id?: string
           registration_date?: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
         Relationships: [
@@ -3167,10 +3181,26 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      get_user_organisations: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          logo_url: string | null
+          primary_colour: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          is_active: boolean
+        }[]
+      }
       guardian_minor_ids: { Args: never; Returns: string[] }
       is_admin_or_manager: { Args: { org_id: string }; Returns: boolean }
       is_coach: { Args: { org_id: string }; Returns: boolean }
       is_guardian_of: { Args: { target_member_id: string }; Returns: boolean }
+      switch_active_organisation: {
+        Args: { p_org_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       accreditation_status: "current" | "expired" | "pending" | "revoked"
