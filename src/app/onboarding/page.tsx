@@ -35,12 +35,10 @@ type Step =
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
-const STEP_LABELS = ['Choose', 'Club', 'Profile', 'Done'];
-
-function ProgressIndicator({ current }: { current: number }) {
+function ProgressIndicator({ current, labels }: { current: number; labels: string[] }) {
   return (
     <div className="mb-8 flex items-center justify-center gap-0">
-      {STEP_LABELS.map((label, i) => {
+      {labels.map((label, i) => {
         const step = i + 1;
         const active = step === current;
         const complete = step < current;
@@ -64,7 +62,7 @@ function ProgressIndicator({ current }: { current: number }) {
                 {label}
               </span>
             </div>
-            {i < STEP_LABELS.length - 1 && (
+            {i < labels.length - 1 && (
               <div
                 className={`mx-1 h-0.5 w-10 sm:w-16 ${complete ? 'bg-primary' : 'bg-muted-foreground/30'}`}
               />
@@ -137,9 +135,13 @@ interface CreateClubState {
 function StepCreateClub({
   onComplete,
   onBack,
+  committedClubName,
+  onContinue,
 }: {
-  onComplete: () => void;
+  onComplete: (clubName: string) => void;
   onBack: () => void;
+  committedClubName: string | null;
+  onContinue: () => void;
 }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -150,6 +152,29 @@ function StepCreateClub({
     contactPhone: '',
   });
   const [errors, setErrors] = useState<Partial<CreateClubState>>({});
+
+  // If the user already committed to a club in this session and navigated
+  // back here from Step 3, render a summary view instead of the form. The
+  // organisation row already exists, so re-rendering the form would let them
+  // accidentally try to create a second one.
+  if (committedClubName) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <CheckCircle2 className="h-7 w-7" />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold">{committedClubName} is ready</h1>
+          <p className="mt-1 text-muted-foreground">
+            Your club has been created. Continue to finish your profile.
+          </p>
+        </div>
+        <Button onClick={onContinue} className="w-full">
+          Continue
+        </Button>
+      </div>
+    );
+  }
 
   const slug = generateSlug(form.name);
 
@@ -233,7 +258,7 @@ function StepCreateClub({
         { onConflict: 'profile_id,organisation_id' }
       );
 
-      onComplete();
+      onComplete(form.name.trim());
     } catch {
       toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
     } finally {
@@ -335,10 +360,14 @@ function StepJoinClub({
   onComplete,
   onBack,
   initialSlug,
+  committedClubName,
+  onContinue,
 }: {
-  onComplete: () => void;
+  onComplete: (clubName: string) => void;
   onBack: () => void;
   initialSlug?: string;
+  committedClubName: string | null;
+  onContinue: () => void;
 }) {
   const { toast } = useToast();
   const [inviteCode, setInviteCode] = useState(initialSlug ?? '');
@@ -354,6 +383,26 @@ function StepJoinClub({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Already-joined summary (see StepCreateClub for rationale).
+  if (committedClubName) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <CheckCircle2 className="h-7 w-7" />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold">Joined {committedClubName}</h1>
+          <p className="mt-1 text-muted-foreground">
+            You&apos;re a member of this club. Continue to finish your profile.
+          </p>
+        </div>
+        <Button onClick={onContinue} className="w-full">
+          Continue
+        </Button>
+      </div>
+    );
+  }
 
   const handleSearch = async () => {
     if (!inviteCode.trim()) return;
@@ -414,7 +463,7 @@ function StepJoinClub({
         { onConflict: 'profile_id,organisation_id' }
       );
 
-      onComplete();
+      onComplete(found.name);
     } catch {
       toast({ title: 'Error', description: 'An unexpected error occurred.', variant: 'destructive' });
     } finally {
@@ -493,23 +542,33 @@ interface ProfileState {
 
 function StepCompleteProfile({
   onComplete,
-  onSkip,
+  onBack,
+  form,
+  setForm,
 }: {
   onComplete: () => void;
-  onSkip: () => void;
+  onBack: () => void;
+  form: ProfileState;
+  setForm: (updater: (prev: ProfileState) => ProfileState) => void;
 }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [form, setForm] = useState<ProfileState>({
-    phone: '',
-    dateOfBirth: '',
-    emergencyName: '',
-    emergencyPhone: '',
-  });
+  const [errors, setErrors] = useState<Partial<ProfileState>>({});
+
+  const validate = (): boolean => {
+    const next: Partial<ProfileState> = {};
+    if (!form.phone.trim()) next.phone = 'Phone number is required.';
+    if (!form.dateOfBirth) next.dateOfBirth = 'Date of birth is required.';
+    if (!form.emergencyName.trim()) next.emergencyName = 'Emergency contact name is required.';
+    if (!form.emergencyPhone.trim()) next.emergencyPhone = 'Emergency contact phone is required.';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
 
     try {
@@ -543,10 +602,10 @@ function StepCompleteProfile({
       const { error } = await supabase
         .from('profiles')
         .update({
-          phone: form.phone || null,
-          date_of_birth: form.dateOfBirth || null,
-          emergency_contact_name: form.emergencyName || null,
-          emergency_contact_phone: form.emergencyPhone || null,
+          phone: form.phone,
+          date_of_birth: form.dateOfBirth,
+          emergency_contact_name: form.emergencyName,
+          emergency_contact_phone: form.emergencyPhone,
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
           updated_at: new Date().toISOString(),
         })
@@ -576,7 +635,7 @@ function StepCompleteProfile({
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number</Label>
+          <Label htmlFor="phone">Phone Number *</Label>
           <Input
             id="phone"
             type="tel"
@@ -584,30 +643,33 @@ function StepCompleteProfile({
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           />
+          {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dob">Date of Birth</Label>
+          <Label htmlFor="dob">Date of Birth *</Label>
           <Input
             id="dob"
             type="date"
             value={form.dateOfBirth}
             onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
           />
+          {errors.dateOfBirth && <p className="text-sm text-destructive">{errors.dateOfBirth}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="emergency-name">Emergency Contact Name</Label>
+          <Label htmlFor="emergency-name">Emergency Contact Name *</Label>
           <Input
             id="emergency-name"
             placeholder="Jane Smith"
             value={form.emergencyName}
             onChange={(e) => setForm((f) => ({ ...f, emergencyName: e.target.value }))}
           />
+          {errors.emergencyName && <p className="text-sm text-destructive">{errors.emergencyName}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="emergency-phone">Emergency Contact Phone</Label>
+          <Label htmlFor="emergency-phone">Emergency Contact Phone *</Label>
           <Input
             id="emergency-phone"
             type="tel"
@@ -615,6 +677,7 @@ function StepCompleteProfile({
             value={form.emergencyPhone}
             onChange={(e) => setForm((f) => ({ ...f, emergencyPhone: e.target.value }))}
           />
+          {errors.emergencyPhone && <p className="text-sm text-destructive">{errors.emergencyPhone}</p>}
         </div>
 
         <div className="space-y-2">
@@ -628,8 +691,8 @@ function StepCompleteProfile({
       </div>
 
       <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onSkip} className="flex-1">
-          Skip for now
+        <Button type="button" variant="outline" onClick={onBack} className="flex-1">
+          Back
         </Button>
         <Button type="submit" className="flex-1" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -675,45 +738,122 @@ function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const joinSlug = searchParams.get('join');
+
   const [step, setStep] = useState<Step>({ id: joinSlug ? '2b' : 1 });
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [isExistingUser, setIsExistingUser] = useState(false);
+  const [clubFlow, setClubFlow] = useState<'2a' | '2b'>(joinSlug ? '2b' : '2a');
+  const [committedClubName, setCommittedClubName] = useState<string | null>(null);
+
+  // Profile form state lifted to the parent so navigating Step 3 ⇄ Step 2
+  // preserves the user's input.
+  const [profileForm, setProfileForm] = useState<ProfileState>({
+    phone: '',
+    dateOfBirth: '',
+    emergencyName: '',
+    emergencyPhone: '',
+  });
+
+  // On mount, look up the user's profile to (a) decide whether they're an
+  // existing user creating an additional club (in which case we skip the
+  // profile step) and (b) pre-fill any profile fields that already exist.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        if (!cancelled) setBootstrapping(false);
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organisation_id, phone, date_of_birth, emergency_contact_name, emergency_contact_phone')
+        .eq('id', user.id)
+        .single();
+      if (cancelled) return;
+      setIsExistingUser(Boolean(profile?.organisation_id));
+      setProfileForm({
+        phone: profile?.phone ?? '',
+        dateOfBirth: profile?.date_of_birth ?? '',
+        emergencyName: profile?.emergency_contact_name ?? '',
+        emergencyPhone: profile?.emergency_contact_phone ?? '',
+      });
+      setBootstrapping(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const labels = isExistingUser
+    ? ['Choose', 'Club', 'Done']
+    : ['Choose', 'Club', 'Profile', 'Done'];
 
   const currentStepNumber = (() => {
     if (step.id === 1) return 1;
     if (step.id === '2a' || step.id === '2b') return 2;
     if (step.id === 3) return 3;
-    return 4;
+    return labels.length;
   })();
+
+  // After Step 2a/2b commits a club, jump straight to Done for existing
+  // users (their profile already exists); otherwise go to the Profile step.
+  const handleClubCommitted = (clubName: string) => {
+    setCommittedClubName(clubName);
+    setStep({ id: isExistingUser ? 4 : 3 });
+  };
+
+  if (bootstrapping) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-sm sm:p-8">
-        <ProgressIndicator current={currentStepNumber} />
+        <ProgressIndicator current={currentStepNumber} labels={labels} />
 
         {step.id === 1 && (
           <StepChoose
-            onChoice={(c) => setStep({ id: c === 'create' ? '2a' : '2b' })}
+            onChoice={(c) => {
+              const next = c === 'create' ? '2a' : '2b';
+              setClubFlow(next);
+              setStep({ id: next });
+            }}
           />
         )}
 
         {step.id === '2a' && (
           <StepCreateClub
-            onComplete={() => setStep({ id: 3 })}
+            onComplete={handleClubCommitted}
             onBack={() => setStep({ id: 1 })}
+            committedClubName={committedClubName}
+            onContinue={() => setStep({ id: isExistingUser ? 4 : 3 })}
           />
         )}
 
         {step.id === '2b' && (
           <StepJoinClub
-            onComplete={() => setStep({ id: 3 })}
+            onComplete={handleClubCommitted}
             onBack={() => setStep({ id: 1 })}
             initialSlug={joinSlug ?? undefined}
+            committedClubName={committedClubName}
+            onContinue={() => setStep({ id: isExistingUser ? 4 : 3 })}
           />
         )}
 
         {step.id === 3 && (
           <StepCompleteProfile
             onComplete={() => setStep({ id: 4 })}
-            onSkip={() => setStep({ id: 4 })}
+            onBack={() => setStep({ id: clubFlow })}
+            form={profileForm}
+            setForm={setProfileForm}
           />
         )}
 
